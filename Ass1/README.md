@@ -10,4 +10,4 @@
 In the current directory, run `cmake .` to generate the `Makefile`. Then, run `cmake --build ./` in order to compile the main file.
 
 # Running
-After compiling the files, the executables can be found in the same directory. They can then be run in the terminal using `./[filename]`
+After compiling the files, the executables can be found in the same directory. They can then be run in the terminal using `./[project_name]`
