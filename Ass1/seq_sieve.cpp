@@ -23,7 +23,7 @@ bool isPrime(int n){    // O(sqrt(n)) => sqrt(n) ops worst case
         return false;
     }
 
-    if (n == 2){
+    if (n == 2 || n == 3){
         return true;
     }
 
