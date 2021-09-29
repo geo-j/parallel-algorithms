@@ -5,6 +5,8 @@ The kth prime number is approximately kln k (https://proofwiki.org/wiki/Approxim
 We can find the number of total operations by summing over all the probabilities of numbers up to n to be a prime: \sum_{i <= n, i prime} 1/i
 This sum is approximately the same with summing approximately over all the first n/(ln n) prime numbers, each approximately kln k, with a probability of 1/x of existing: \sum_{k = 2}^{n/ln n} 1/(kln k). This sum can be approximated using its integral, which results in ln ln n. Thus, there are approximately nln ln n operations to be done for each prime number smaller than n
 Since there are approximately sqrt(n) prime numbers smaller than n, this results in nln ln n + sqrt(n) operations. 
+https://cp-algorithms.com/algebra/sieve-of-eratosthenes.html
+b)
 */
 
 
