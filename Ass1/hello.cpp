@@ -1,5 +1,5 @@
-#include <bulk/backends/thread/thread.hpp>
 #include <bulk/bulk.hpp>
+#include <bulk/backends/thread/thread.hpp>
 
 
 int main(){

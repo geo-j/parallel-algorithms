@@ -1,14 +1,13 @@
 # Dependencies
-Set the path of the `BULK_PATH` variable in the `CMakeLists.txt` file to the path of your `Bulk/include` folder.
+## CMakeLists.txt
+- `PROJECT_NAME` variable set to the name of the project
+- `BULK_PATH` variable set to the path of your `Bulk/include` folder
+- `EXEC` variable set to the name of the file containing the `main` function
+- `CMAKE_CXX_COMPILER` variable set to the path of the `g++` compiler
+- `CMAKE_C_COMPILER` variable set to the paths of the `gcc` compiler
 
 # Compiling
-In the current directory, you can run
-
-`make hello` to compile and run the Hello World of Bulk
-
-`make seq_sieve` to compile and run Geo's implementation of the Sequential Sieve of Erastothenes
-
-`make clean` to clean all the compile and run files
+In the current directory, run `cmake --build ./` in order to compile the file.
 
 # Running
-After compiling the files, the executables can be found in the `build` directory. They can then be run in the terminal using `./[filename]`
+After compiling the files, the executables can be found in the same directory. They can then be run in the terminal using `./[filename]`
