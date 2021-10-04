@@ -38,7 +38,7 @@ bool isPrime(int n){    // O(sqrt(n)) => sqrt(n) ops worst case
 
 int main(){
     int n;
-    vector<long long>primes(MAX_SIZE, true);
+    vector<bool>primes(MAX_SIZE, true);
 
     cin >> n;
 
