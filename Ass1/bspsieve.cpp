@@ -1,6 +1,7 @@
 #include <bulk/backends/thread/thread.hpp>
 #include <bulk/bulk.hpp>
 #include <string>
+#include <chrono>
 
 using namespace std;
 
@@ -26,6 +27,8 @@ int main(int argc, char* argv[]) {
             cerr << "wrong arguments";
         }
     }
+
+    const auto start = chrono::steady_clock::now();
 
     bulk::thread::environment env;
     env.spawn(env.available_processors(), [&n, &p](auto& world) {
@@ -98,4 +101,7 @@ int main(int argc, char* argv[]) {
             world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
         }
     });
+
+    const auto end = chrono::steady_clock::now();
+    cout << "It took " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms";
 }
