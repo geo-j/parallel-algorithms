@@ -47,13 +47,14 @@ int main(int argc, char* argv[]) {
         world.log("==== Superstep 1");
         for (int i = 0; i < cyclic_local_size; i ++){
             int current = pid + i * p + 1;
-            world.log("\tprocessor %d, index %d, number %d", pid, i, current);
+            // world.log("\tprocessor %d, index %d, number %d", pid, i, current);
             if (current == 1)
                 primes[i] = false;
             else
                 primes[i] = true;
         }
 
+        world.log("Sync-ing...");
         world.sync();
 
         // create an array with which to communicate potential primes for each of the processors
@@ -63,7 +64,7 @@ int main(int argc, char* argv[]) {
         // iterate through all the local numbers
         for (int i = 0; i < cyclic_local_size; i ++){
             int current = pid + i * p + 1;
-            world.log("\tprocessor %d, current %d", pid, current);
+            // world.log("\tprocessor %d, current %d", pid, current);
 
             // if the current number is marked as prime, communicate it to the other processors and sieve its multiples
             if (primes[i]){
@@ -72,7 +73,7 @@ int main(int argc, char* argv[]) {
                 for (int j = i + 1; j < cyclic_local_size; j ++){
                     int multiple = pid + j * p + 1;
                     if (multiple % current == 0){
-                        world.log("\t\tprocessor %d, non-prime %d found", pid, multiple);
+                        // world.log("\t\tprocessor %d, non-prime %d found", pid, multiple);
                         primes[j] = false;
                     }
                 }
@@ -80,25 +81,28 @@ int main(int argc, char* argv[]) {
             
         }
 
+        world.log("Sync-ing...");
         world.sync();
 
         world.log("==== Superstep 3");
         // for each of the received primes from the other processors, sieve any marked-as-prime local numbers
         for (auto prime : local_primes) {
-            world.log("\tprocessor %d received prime %d", pid, prime);
+            // world.log("\tprocessor %d received prime %d", pid, prime);
 
             for (int j = 0; j < cyclic_local_size; j ++) {
                 int current = pid + j * p + 1;
                 if (current % prime == 0 && primes[j]) {
-                    world.log("\t\tprocessor %d, non-prime %d found", pid, current);
+                    // world.log("\t\tprocessor %d, non-prime %d found", pid, current);
                     primes[j] = false;
                 }
             }
         }
 
+        world.log("Sync-ing...");
         world.sync();
         for (int i = 0; i < cyclic_local_size; i ++){
-            world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
+            if (primes[i])
+                world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
         }
     });
 
