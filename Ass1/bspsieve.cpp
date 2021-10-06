@@ -5,6 +5,16 @@
 
 using namespace std;
 
+int gcd(int a, int b) {
+   if (a == 0 || b == 0)
+        return 0;
+   else if (a == b)
+        return a;
+   else if (a > b)
+        return gcd(a - b, b);
+   else return gcd(a, b - a);
+}
+
 // function that sends the locally found primes to all the other processors
 void put_primes(int prime, int pid, int p, bulk::queue<int> &q) {
     for (int i = 0; i < p; i ++) {
@@ -15,7 +25,8 @@ void put_primes(int prime, int pid, int p, bulk::queue<int> &q) {
 }
 
 int main(int argc, char* argv[]) {
-    int n, p = -1;
+    bulk::thread::environment env;
+    int n, p = env.available_processors();
 
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
@@ -30,14 +41,10 @@ int main(int argc, char* argv[]) {
 
     const auto start = chrono::steady_clock::now();
 
-    bulk::thread::environment env;
-    env.spawn(env.available_processors(), [&n, &p](auto& world) {
+    env.spawn(p, [&n, &p](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
-
-        if (p == -1)    // if the number of processors hasn't been specified, use all by
-            p = world.active_processors();
-
+        
         // create cyclically partitioned array
         auto cp = bulk::cyclic_partitioning<1>({n}, {p});
         auto cyclic_local_size = cp.local_count(world.rank());
@@ -63,19 +70,22 @@ int main(int argc, char* argv[]) {
         world.log("==== Superstep 2");
         // iterate through all the local numbers
         for (int i = 0; i < cyclic_local_size; i ++){
-            int current = pid + i * p + 1;
             // world.log("\tprocessor %d, current %d", pid, current);
 
             // if the current number is marked as prime, communicate it to the other processors and sieve its multiples
             if (primes[i]){
+                int current = pid + i * p + 1;
                 put_primes(current, pid, p, local_primes);
 
-                for (int j = i + 1; j < cyclic_local_size; j ++){
-                    int multiple = pid + j * p + 1;
-                    if (multiple % current == 0){
-                        // world.log("\t\tprocessor %d, non-prime %d found", pid, multiple);
+                int d = gcd(current, p);
+                int step = current / d;
+
+                for (int j = i + step; j < cyclic_local_size; j += step){
+                    // int multiple = pid + j * p + 1;
+                    // if (multiple % current == 0){
+                        // world.log("\t\tprocessor %d, step %d, non-prime %d found", pid, step, pid + j * p + 1);
                         primes[j] = false;
-                    }
+                    // }
                 }
             }
             
