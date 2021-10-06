@@ -2,6 +2,8 @@
 #include <bulk/bulk.hpp>
 #include <string>
 #include <chrono>
+#include <fstream>
+#include <vector>
 
 using namespace std;
 
@@ -27,6 +29,8 @@ void put_primes(int prime, int pid, int p, bulk::queue<int> &q) {
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
     int n, p = env.available_processors();
+    ofstream f;
+    vector<int> flops = vector<int>(p);
 
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
@@ -41,7 +45,7 @@ int main(int argc, char* argv[]) {
 
     const auto start = chrono::steady_clock::now();
 
-    env.spawn(p, [&n, &p](auto& world) {
+    env.spawn(p, [&n, &p, &flops](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
         
@@ -67,6 +71,8 @@ int main(int argc, char* argv[]) {
         // create an array with which to communicate potential primes for each of the processors
         auto local_primes = bulk::queue<int>(world);
 
+        int flop = 0;
+
         world.log("==== Superstep 2");
         // iterate through all the local numbers
         for (int i = 0; i < cyclic_local_size; i ++){
@@ -77,6 +83,7 @@ int main(int argc, char* argv[]) {
                 int current = pid + i * p + 1;
                 put_primes(current, pid, p, local_primes);
 
+                // sieving will be done with a step-size of the current prime / gcd(current, p)
                 int d = gcd(current, p);
                 int step = current / d;
 
@@ -85,6 +92,7 @@ int main(int argc, char* argv[]) {
                     // if (multiple % current == 0){
                         // world.log("\t\tprocessor %d, step %d, non-prime %d found", pid, step, pid + j * p + 1);
                         primes[j] = false;
+                        flop ++;
                     // }
                 }
             }
@@ -104,6 +112,7 @@ int main(int argc, char* argv[]) {
                 if (current % prime == 0 && primes[j]) {
                     // world.log("\t\tprocessor %d, non-prime %d found", pid, current);
                     primes[j] = false;
+                    flop ++;
                 }
             }
         }
@@ -114,8 +123,17 @@ int main(int argc, char* argv[]) {
             if (primes[i])
                 world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
         }
+
+        flops[pid] = flop;
     });
 
     const auto end = chrono::steady_clock::now();
-    cout << "It took " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms";
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
+    cout << "It took " << duration << " ms and " << endl;
+
+    f.open("results.csv", ios_base::app);
+    for (int i = 0; i < p; i ++) {
+        f << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << endl;
+    }
+    f.close();
 }
