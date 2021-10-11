@@ -20,7 +20,7 @@ int gcd(int a, int b) {
 // function that sends the locally found primes to all the other processors
 void put_primes(int prime, int pid, int p, bulk::queue<int> &q) {
     for (int i = 0; i < p; i ++) {
-        if (i != pid && (abs(i - pid) + 1) % prime == 0) {  // send the primes only to the processors that may have multiples of it
+        if (i != pid) {  // send the primes only to the processors that may have multiples of it
             q(i).send(prime);
         }
     }
