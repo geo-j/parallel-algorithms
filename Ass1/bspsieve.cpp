@@ -4,6 +4,7 @@
 #include <chrono>
 #include <fstream>
 #include <vector>
+#include <math.h>
 
 using namespace std;
 
@@ -17,27 +18,34 @@ int gcd(int a, int b) {
    else return gcd(a, b - a);
 }
 
-// function that sends the locally found primes to all the other processors
-void put_primes(int prime, int pid, int p, bulk::queue<int> &q) {
+// function that sends the number to all the other processors
+void put_numbers_all(int number, int pid, int p, bulk::queue<int> &q) {
     for (int i = 0; i < p; i ++) {
-        if (i != pid) {  // send the primes only to the processors that may have multiples of it
-            q(i).send(prime);
+        if (i != pid) { 
+            q(i).send(number);
         }
+    }
+}
+
+// function that sends the locally found primes to only the processors that might have multiples of it
+void put_primes(int prime, int n, int p, bulk::queue<int> &q) {
+    for (int i = prime * 2; i < n; i += prime) {
+        q((i - 1) % p).send(i);
     }
 }
 
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
-    int n, p = env.available_processors();
+    size_t n, p = env.available_processors();
     ofstream f;
     vector<int> flops = vector<int>(p);
 
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
         if (arg == "-n") {
-            n = stoi(argv[++ i]);
+            n = static_cast<size_t>(stoi(argv[++ i]));
         } else if (arg == "-p") {
-            p = stoi(argv[++ i]);
+            p = static_cast<size_t>(stoi(argv[++ i]));
         } else {
             cerr << "wrong arguments";
         }
@@ -81,7 +89,7 @@ int main(int argc, char* argv[]) {
             // if the current number is marked as prime, communicate it to the other processors and sieve its multiples
             if (primes[i]){
                 int current = pid + i * p + 1;
-                put_primes(current, pid, p, local_primes);
+                put_primes(current, n, p, local_primes);
 
                 // sieving will be done with a step-size of the current prime / gcd(current, p)
                 int d = gcd(current, p);
@@ -107,9 +115,11 @@ int main(int argc, char* argv[]) {
         for (auto prime : local_primes) {
             // world.log("\tprocessor %d received prime %d", pid, prime);
 
-            for (int j = 0; j < cyclic_local_size; j ++) {
-                int current = pid + j * p + 1;
-                if (current % prime == 0 && primes[j]) {
+            // start from the first multiple of the prime in the current boolean array
+            for (int j = ceil(prime / p); j < cyclic_local_size; j += prime) {
+                // int current = pid + j * p + 1;
+                // world.log("primes[%d] = %d", j, current);
+                if (primes[j]) {
                     // world.log("\t\tprocessor %d, non-prime %d found", pid, current);
                     primes[j] = false;
                     flop ++;
