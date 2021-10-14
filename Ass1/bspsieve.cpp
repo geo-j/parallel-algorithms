@@ -129,9 +129,27 @@ int main(int argc, char* argv[]) {
 
         world.log("Sync-ing...");
         world.sync();
-        for (int i = 0; i < cyclic_local_size; i ++){
-            if (primes[i])
-                world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
+        // for (int i = 0; i < cyclic_local_size; i ++){
+        //     if (primes[i])
+        //         world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
+        // }
+
+        world.log("==== Superstep 4");
+        for (int i = 0; i < cyclic_local_size; i ++) {
+            if (primes[i]) {
+                int current = pid + i * p + 1;
+                local_primes((pid + 2) % p).send(current);
+            }
+        }
+        world.log("Sync-ing...");
+        world.sync();
+
+        for (auto prime : local_primes) {
+            int i = ceil(prime / p);
+            if (primes[i]) {
+                int current = pid + i * p + 1;
+                world.log("found twin primes (%d, %d)", prime, current);
+            }
         }
 
         flops[pid] = flop;
