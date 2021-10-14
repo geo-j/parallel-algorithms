@@ -135,17 +135,20 @@ int main(int argc, char* argv[]) {
         // }
 
         world.log("==== Superstep 4");
+        // send the local primes only to the processors that might possibly have its twin prime
         for (int i = 0; i < cyclic_local_size; i ++) {
             if (primes[i]) {
                 int current = pid + i * p + 1;
                 local_primes((pid + 2) % p).send(current);
+                // world.log("processor %d sends %d to processor %d hoping for prime %d", pid, current, (pid + 2) % p, static_cast<int>(round(current / (p * 1.0))) * p + (pid + 2) % p + 1);
             }
         }
         world.log("Sync-ing...");
         world.sync();
 
         for (auto prime : local_primes) {
-            int i = ceil(prime / p);
+            int i = static_cast<int>(round(prime / (p * 1.0)));
+            // world.log("processor %d trying %d and %d on index %d as twin primes", pid, prime, current, i);
             if (primes[i]) {
                 int current = pid + i * p + 1;
                 world.log("found twin primes (%d, %d)", prime, current);
