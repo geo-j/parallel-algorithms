@@ -45,6 +45,13 @@ void put_primes(int prime, int n, int p, bulk::queue<int> &q, int& flop) {
     }
 }
 
+// calculate the number based on its index in a cyclically distributed boolean array
+int index_to_number(int i, int pid, int p, int &flop) {
+    flop += 3;
+    return pid + i * p + 1;
+}
+
+
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
     size_t n, p = env.available_processors();
@@ -79,9 +86,9 @@ int main(int argc, char* argv[]) {
         // init boolean primes array with true, except for the first element 1
         world.log("==== Superstep 1");
         for (int i = 0; i < cyclic_local_size; i ++){
-            int current = pid + i * p + 1;
+            int current = index_to_number(i, pid, p, flop);
 
-            flop += 4;
+            flop ++;
             // world.log("\tprocessor %d, index %d, number %d", pid, i, current);
             if (current == 1)
                 primes[i] = false;
@@ -103,8 +110,8 @@ int main(int argc, char* argv[]) {
 
             // if the current number is marked as prime, communicate it to the other processors and sieve its multiples
             if (primes[i]){
-                int current = pid + i * p + 1;
-                flop += 3;
+                int current = index_to_number(i, pid, p, flop);
+                flop ++;
                 put_primes(current, n, p, local_primes, flop);
 
                 // sieving will be done with a step-size of the current prime / gcd(current, p)
@@ -158,10 +165,10 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < cyclic_local_size; i ++) {
             flop ++;
             if (primes[i]) {
-                int current = pid + i * p + 1;
+                int current = index_to_number(i, pid, p, flop);
                 local_primes((pid + 2) % p).send(current);
 
-                flop += 5;
+                flop += 2;
                 // world.log("processor %d sends %d to processor %d hoping for prime %d", pid, current, (pid + 2) % p, static_cast<int>(round(current / (p * 1.0))) * p + (pid + 2) % p + 1);
             }
         }
@@ -173,8 +180,8 @@ int main(int argc, char* argv[]) {
             int i = static_cast<int>(round(prime / (p * 1.0)));
             // world.log("processor %d trying %d and %d on index %d as twin primes", pid, prime, current, i);
             if (primes[i]) {
-                int current = pid + i * p + 1;
-                flop += 3;
+                int current = index_to_number(i, pid, p, flop);
+                flop ++;
                 world.log("found twin primes (%d, %d)", prime, current);
             }
         }
