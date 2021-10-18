@@ -37,9 +37,10 @@ void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
 }
 
 // function that sends the locally found primes to only the processors that might have multiples of it
-void put_primes(int prime, int n, int p, bulk::queue<int> &q, int& flop) {
+void put_primes(int prime, int n, int p, bulk::queue<int> &q, int& flop, bulk::world& world) {
     flop ++;
-    for (int i = prime * 2; i < n; i += prime) {
+    for (int i = prime * 2; i <= n; i += prime) {
+        world.log("send prime %d to processor %d", prime, (i - 1) % p);
         q((i - 1) % p).send(i);
         flop += 3;
     }
@@ -51,6 +52,34 @@ int index_to_number(int i, int pid, int p, int &flop) {
     return pid + i * p + 1;
 }
 
+// calculate the index of the number in a cyclically distirbuted boolean array
+int number_to_index(int number, int p, int pid, int &flop) {
+    // return static_cast<int>(round(number / (p * 1.0)));
+    return ceil((number - 1 - pid) / (p * 1.0));
+}
+
+void sieve_local_prime_sums(int prime1, int prime2, int n, int pid, int p, int &flop, bulk::queue<int> &q, bulk::coarray<bool> &even_numbers,  bulk::world& world) {
+    int sum = prime1 + prime2;
+    int sum_processor = (sum - 1) % p;
+    world.log("\tprocessor %d: prime1 = %d, prime2 = %d", pid, prime1, prime2);
+
+    flop += 4;
+
+    // if the prime sum is in the current processor, sieve it; otherwise send it to the corresponding processor
+    if (sum <= n && sum % 2 == 0) {
+        flop ++;
+        if (sum_processor == pid) {
+            int k = number_to_index(sum, p, pid, flop);
+            world.log("\tfound local summed prime %d on index %d", sum, k);
+            even_numbers[k] = true;
+        }
+        else {
+            world.log("\tsend summed prime %d to processor %d", sum, sum_processor);
+            q(sum_processor).send(sum);
+        }
+
+    }
+}
 
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
@@ -112,7 +141,8 @@ int main(int argc, char* argv[]) {
             if (primes[i]){
                 int current = index_to_number(i, pid, p, flop);
                 flop ++;
-                put_primes(current, n, p, local_primes, flop);
+                put_primes(current, n, p, local_primes, flop, world);
+                // put_numbers_to_all(current, pid, p, local_primes);
 
                 // sieving will be done with a step-size of the current prime / gcd(current, p)
                 int d = gcd(current, p, flop);
@@ -138,16 +168,16 @@ int main(int argc, char* argv[]) {
         world.log("==== Superstep 3");
         // for each of the received primes from the other processors, sieve any marked-as-prime local numbers
         for (auto prime : local_primes) {
-            // world.log("\tprocessor %d received prime %d", pid, prime);
+            world.log("\tprocessor %d received non-prime %d", pid, prime);
 
             flop ++;
             // start from the first multiple of the prime in the current boolean array
-            for (int j = ceil(prime / p); j < cyclic_local_size; j += prime) {
+            for (int j = (prime - 1 - pid) / p; j < cyclic_local_size; j += prime) {
                 // int current = pid + j * p + 1;
-                // world.log("primes[%d] = %d", j, current);
+                world.log("primes[%d] = %d", j, prime);
                 flop ++;
                 if (primes[j]) {
-                    // world.log("\t\tprocessor %d, non-prime %d found", pid, current);
+                    // world.log("\t\tprocessor %d, non-prime %d found", pid, prime);
                     primes[j] = false;
                 }
             }
@@ -155,13 +185,14 @@ int main(int argc, char* argv[]) {
 
         world.log("Sync-ing...");
         world.sync();
-        // for (int i = 0; i < cyclic_local_size; i ++){
-        //     if (primes[i])
-        //         world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
-        // }
+        for (int i = 0; i < cyclic_local_size; i ++){
+            if (primes[i])
+                world.log("number %d, prime? %d", pid + i * p + 1, primes[i]);
+        }
 
+        // find Twin Primes
         world.log("==== Superstep 4");
-        // send the local primes only to the processors that might possibly have its twin prime
+        // send the local primes only to the processors that might possibly have its twin prime (which is a processor 2 units away from the current processor)
         for (int i = 0; i < cyclic_local_size; i ++) {
             flop ++;
             if (primes[i]) {
@@ -169,22 +200,92 @@ int main(int argc, char* argv[]) {
                 local_primes((pid + 2) % p).send(current);
 
                 flop += 2;
-                // world.log("processor %d sends %d to processor %d hoping for prime %d", pid, current, (pid + 2) % p, static_cast<int>(round(current / (p * 1.0))) * p + (pid + 2) % p + 1);
+                // world.log("\tprocessor %d sends %d to processor %d hoping for prime %d", pid, current, (pid + 2) % p, (current - 1 - (pid + 2) % p) / p + 2);
             }
         }
         world.log("Sync-ing...");
         world.sync();
 
+        world.log("==== Superstep 5");
         for (auto prime : local_primes) {
             flop += 2;
-            int i = static_cast<int>(round(prime / (p * 1.0)));
-            // world.log("processor %d trying %d and %d on index %d as twin primes", pid, prime, current, i);
+            int i = number_to_index(prime, p, pid, flop);
+            // world.log("\tprocessor %d trying %d and %d on index %d as twin primes", pid, prime, prime, i);
             if (primes[i]) {
                 int current = index_to_number(i, pid, p, flop);
                 flop ++;
                 world.log("found twin primes (%d, %d)", prime, current);
             }
         }
+
+        world.log("==== Superstep 6");
+
+        // Goldbach Conjecture
+        auto even_numbers = bulk::coarray<bool>(world, cyclic_local_size);
+
+        // init even numbers array with 0 (not sieved);
+        for (int i = 0; i < cyclic_local_size; i ++) {
+            even_numbers[i] = false;
+        }
+
+        world.sync();
+
+        world.log("==== Superstep 7");
+
+        auto local_sums = bulk::queue<int>(world);
+
+        // send local primes to all other processors
+        for (int i = 0; i < cyclic_local_size; i ++) {
+            if (primes[i]){
+                int prime = index_to_number(i, pid, p, flop);
+                    // send prime to all other processors
+                put_numbers_to_all(prime, pid, p, local_primes);
+            }       
+        }
+
+        world.sync();
+
+        // sieve local prime sums, and send remote sums to their corresponding processor
+        for (int i = 0; i < cyclic_local_size; i ++) {
+            flop ++;
+
+            if (primes[i]) {
+                int prime1 = index_to_number(i, pid, p, flop);
+
+                for (int j = i; j < cyclic_local_size; j ++) {
+
+                    if (primes[j]) {
+                        world.log("processor %d: i = %d, j = %d", pid,  i, j);
+                        int prime2 = index_to_number(j, pid, p, flop);
+                        put_numbers_to_all(prime2, pid, p, local_primes);
+
+                        sieve_local_prime_sums(prime1, prime2, n, pid, p, flop, local_sums, even_numbers, world);
+                    }
+                }
+
+                for (auto prime2 : local_primes) {
+                    // world.log("processor %d got prime %d: i = %d", pid, prime2, i);
+                    sieve_local_prime_sums(prime1, prime2, n, pid, p, flop, local_sums, even_numbers, world);
+                }
+            }
+        }
+
+        world.sync();
+
+        // sieve the remotely gotten sums
+        for (auto sum : local_sums) {
+            int i = number_to_index(sum, p, pid, flop);
+            world.log("\tprocessor %d received summed prime %d on index %d", pid, sum, i);
+            even_numbers[i] = true;
+        }
+
+        world.sync();
+
+        for (int i = 0; i < cyclic_local_size; i ++) {
+            if (even_numbers[i])
+                world.log("processor %d, summed prime %d on index %d", pid, index_to_number(i, pid, p, flop), i);
+        }
+
 
         flops[pid] = flop;
     });
