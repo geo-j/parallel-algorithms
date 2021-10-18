@@ -72,11 +72,16 @@ int main(int argc, char* argv[]) {
         auto cp = bulk::cyclic_partitioning<1>({n}, {p});
         auto cyclic_local_size = cp.local_count(world.rank());
         auto primes = bulk::coarray<bool>(world, cyclic_local_size);
+    
+        int flop = 0;
+
 
         // init boolean primes array with true, except for the first element 1
         world.log("==== Superstep 1");
         for (int i = 0; i < cyclic_local_size; i ++){
             int current = pid + i * p + 1;
+
+            flop += 3;
             // world.log("\tprocessor %d, index %d, number %d", pid, i, current);
             if (current == 1)
                 primes[i] = false;
@@ -89,8 +94,6 @@ int main(int argc, char* argv[]) {
 
         // create an array with which to communicate potential primes for each of the processors
         auto local_primes = bulk::queue<int>(world);
-
-        int flop = 0;
 
         world.log("==== Superstep 2");
         // iterate through all the local numbers
