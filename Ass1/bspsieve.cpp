@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < cyclic_local_size; i ++){
             int current = pid + i * p + 1;
 
-            flop += 3;
+            flop += 4;
             // world.log("\tprocessor %d, index %d, number %d", pid, i, current);
             if (current == 1)
                 primes[i] = false;
