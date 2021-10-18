@@ -27,8 +27,8 @@ int gcd(int a, int b, int& flop) {
    }
 }
 
-// function that sends the number to all the other processors
-void put_numbers_all(int number, int pid, int p, bulk::queue<int> &q) {
+// function that sends a number to all the other processors
+void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
     for (int i = 0; i < p; i ++) {
         if (i != pid) { 
             q(i).send(number);
