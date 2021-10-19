@@ -9,24 +9,7 @@
 using namespace std;
 
 
-// function that sends a number to all the other processors
-void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
-    for (int i = 0; i < p; i ++) {
-        if (i != pid) { 
-            q(i).send(number);
-        }
-    }
-}
 
-// function that sends the locally found primes to only the processors that might have multiples of it
-void put_prime_multiples(int prime, int n, int p, bulk::queue<int> &q, int& flop, bulk::world& world) {
-    flop ++;
-    for (int i = prime * 2; i <= n; i += prime) {
-        // world.log("send prime %d to processor %d", prime, (i - 1) % p);
-        q((i - 1) % p).send(i);
-        flop += 3;
-    }
-}
 
 void sieve_local_prime_sums(int prime1, int prime2, int n, int pid, int p, int &flop, bulk::queue<int> &q, bulk::coarray<bool> &even_numbers,  bulk::world& world) {
     int sum = prime1 + prime2;
