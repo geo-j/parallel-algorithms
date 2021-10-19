@@ -40,7 +40,7 @@ void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
 void put_primes(int prime, int n, int p, bulk::queue<int> &q, int& flop, bulk::world& world) {
     flop ++;
     for (int i = prime * 2; i <= n; i += prime) {
-        world.log("send prime %d to processor %d", prime, (i - 1) % p);
+        // world.log("send prime %d to processor %d", prime, (i - 1) % p);
         q((i - 1) % p).send(i);
         flop += 3;
     }
@@ -245,6 +245,8 @@ int main(int argc, char* argv[]) {
 
         world.sync();
 
+        world.log("==== Superstep 8");
+
         // sieve local prime sums, and send remote sums to their corresponding processor
         for (int i = 0; i < cyclic_local_size; i ++) {
             flop ++;
@@ -253,6 +255,7 @@ int main(int argc, char* argv[]) {
                 int prime1 = index_to_number(i, pid, p, flop);
 
                 for (int j = i; j < cyclic_local_size; j ++) {
+                    flop ++;
 
                     if (primes[j]) {
                         // world.log("processor %d: i = %d, j = %d", pid,  i, j);
@@ -272,6 +275,8 @@ int main(int argc, char* argv[]) {
 
         world.sync();
 
+        world.log("==== Superstep 8");
+
         // sieve the remotely gotten sums
         for (auto sum : local_sums) {
             int i = number_to_index(sum, p, pid, flop);
@@ -281,11 +286,16 @@ int main(int argc, char* argv[]) {
 
         world.sync();
 
+        world.log("==== Superstep 9");
+
+        // count how many even numbers larger than 2 are sums of primes
         int sum = 0;
 
         for (int i = 0; i < cyclic_local_size; i ++) {
+            flop ++;
             if (even_numbers[i]){
                 sum ++;
+                flop ++;
             }
                 // world.log("processor %d, summed prime %d on index %d", pid, index_to_number(i, pid, p, flop), i);
         }
@@ -294,14 +304,18 @@ int main(int argc, char* argv[]) {
 
         world.sync();
 
-        for (auto partial_sum : local_primes)
+        world.log("==== Superstep 10");
+        for (auto partial_sum : local_primes) {
             sum += partial_sum;
+            flop ++;
+        }
 
         if (sum == (n - 2) / 2)
             world.log("yes");
         else
             world.log("no");
 
+        flop += 3;
 
         flops[pid] = flop;
     });
