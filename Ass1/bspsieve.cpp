@@ -4,28 +4,10 @@
 #include <chrono>
 #include <fstream>
 #include <vector>
-#include <math.h>
+#include "utils.hpp"
 
 using namespace std;
 
-int gcd(int a, int b, int& flop) {
-   if (a == 0 || b == 0) {
-        flop += 2;
-        return 0;
-   }
-   else if (a == b) {
-        flop ++;
-        return a;
-   }
-   else if (a > b) {
-        flop += 2;
-        return gcd(a - b, b);
-   }
-   else {
-       flop ++;
-       return gcd(a, b - a);
-   }
-}
 
 // function that sends a number to all the other processors
 void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
@@ -37,25 +19,13 @@ void put_numbers_to_all(int number, int pid, int p, bulk::queue<int> &q) {
 }
 
 // function that sends the locally found primes to only the processors that might have multiples of it
-void put_primes(int prime, int n, int p, bulk::queue<int> &q, int& flop, bulk::world& world) {
+void put_prime_multiples(int prime, int n, int p, bulk::queue<int> &q, int& flop, bulk::world& world) {
     flop ++;
     for (int i = prime * 2; i <= n; i += prime) {
         // world.log("send prime %d to processor %d", prime, (i - 1) % p);
         q((i - 1) % p).send(i);
         flop += 3;
     }
-}
-
-// calculate the number based on its index in a cyclically distributed boolean array
-int index_to_number(int i, int pid, int p, int &flop) {
-    flop += 3;
-    return pid + i * p + 1;
-}
-
-// calculate the index of the number in a cyclically distirbuted boolean array
-int number_to_index(int number, int p, int pid, int &flop) {
-    // return static_cast<int>(round(number / (p * 1.0)));
-    return ceil((number - 1 - pid) / (p * 1.0));
 }
 
 void sieve_local_prime_sums(int prime1, int prime2, int n, int pid, int p, int &flop, bulk::queue<int> &q, bulk::coarray<bool> &even_numbers,  bulk::world& world) {
@@ -141,7 +111,7 @@ int main(int argc, char* argv[]) {
             if (primes[i]){
                 int current = index_to_number(i, pid, p, flop);
                 flop ++;
-                put_primes(current, n, p, local_primes, flop, world);
+                put_prime_multiples(current, n, p, local_primes, flop, world);
                 // put_numbers_to_all(current, pid, p, local_primes);
 
                 // sieving will be done with a step-size of the current prime / gcd(current, p)
