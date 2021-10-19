@@ -61,7 +61,7 @@ int number_to_index(int number, int p, int pid, int &flop) {
 void sieve_local_prime_sums(int prime1, int prime2, int n, int pid, int p, int &flop, bulk::queue<int> &q, bulk::coarray<bool> &even_numbers,  bulk::world& world) {
     int sum = prime1 + prime2;
     int sum_processor = (sum - 1) % p;
-    world.log("\tprocessor %d: prime1 = %d, prime2 = %d", pid, prime1, prime2);
+    // world.log("\tprocessor %d: prime1 = %d, prime2 = %d", pid, prime1, prime2);
 
     flop += 4;
 
@@ -70,11 +70,11 @@ void sieve_local_prime_sums(int prime1, int prime2, int n, int pid, int p, int &
         flop ++;
         if (sum_processor == pid) {
             int k = number_to_index(sum, p, pid, flop);
-            world.log("\tfound local summed prime %d on index %d", sum, k);
+            // world.log("\tfound local summed prime %d on index %d", sum, k);
             even_numbers[k] = true;
         }
         else {
-            world.log("\tsend summed prime %d to processor %d", sum, sum_processor);
+            // world.log("\tsend summed prime %d to processor %d", sum, sum_processor);
             q(sum_processor).send(sum);
         }
 
@@ -168,13 +168,13 @@ int main(int argc, char* argv[]) {
         world.log("==== Superstep 3");
         // for each of the received primes from the other processors, sieve any marked-as-prime local numbers
         for (auto prime : local_primes) {
-            world.log("\tprocessor %d received non-prime %d", pid, prime);
+            // world.log("\tprocessor %d received non-prime %d", pid, prime);
 
             flop ++;
             // start from the first multiple of the prime in the current boolean array
             for (int j = (prime - 1 - pid) / p; j < cyclic_local_size; j += prime) {
                 // int current = pid + j * p + 1;
-                world.log("primes[%d] = %d", j, prime);
+                // world.log("primes[%d] = %d", j, prime);
                 flop ++;
                 if (primes[j]) {
                     // world.log("\t\tprocessor %d, non-prime %d found", pid, prime);
@@ -255,9 +255,9 @@ int main(int argc, char* argv[]) {
                 for (int j = i; j < cyclic_local_size; j ++) {
 
                     if (primes[j]) {
-                        world.log("processor %d: i = %d, j = %d", pid,  i, j);
+                        // world.log("processor %d: i = %d, j = %d", pid,  i, j);
                         int prime2 = index_to_number(j, pid, p, flop);
-                        put_numbers_to_all(prime2, pid, p, local_primes);
+                        // put_numbers_to_all(prime2, pid, p, local_primes);
 
                         sieve_local_prime_sums(prime1, prime2, n, pid, p, flop, local_sums, even_numbers, world);
                     }
@@ -275,16 +275,32 @@ int main(int argc, char* argv[]) {
         // sieve the remotely gotten sums
         for (auto sum : local_sums) {
             int i = number_to_index(sum, p, pid, flop);
-            world.log("\tprocessor %d received summed prime %d on index %d", pid, sum, i);
+            // world.log("\tprocessor %d received summed prime %d on index %d", pid, sum, i);
             even_numbers[i] = true;
         }
 
         world.sync();
 
+        int sum = 0;
+
         for (int i = 0; i < cyclic_local_size; i ++) {
-            if (even_numbers[i])
-                world.log("processor %d, summed prime %d on index %d", pid, index_to_number(i, pid, p, flop), i);
+            if (even_numbers[i]){
+                sum ++;
+            }
+                // world.log("processor %d, summed prime %d on index %d", pid, index_to_number(i, pid, p, flop), i);
         }
+
+        put_numbers_to_all(sum, pid, p, local_primes);
+
+        world.sync();
+
+        for (auto partial_sum : local_primes)
+            sum += partial_sum;
+
+        if (sum == (n - 2) / 2)
+            world.log("yes");
+        else
+            world.log("no");
 
 
         flops[pid] = flop;
