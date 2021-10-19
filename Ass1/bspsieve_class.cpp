@@ -34,9 +34,14 @@ int main(int argc, char* argv[]) {
         auto cyclic_local_size = cp.local_count(world.rank());
         auto primes = bulk::coarray<bool>(world, cyclic_local_size);
         auto local_primes = bulk::queue<int>(world);
-        
-        Sieve sieve = Sieve(n, p, cyclic_local_size, primes, local_primes, world);
+        auto local_sums = bulk::queue<int>(world);
+        auto even_numbers = bulk::coarray<bool>(world, cyclic_local_size);
+
+
+        Sieve sieve = Sieve(n, p, cyclic_local_size, primes, even_numbers, local_primes, local_sums, world);
         sieve.parallel_sieve();
+        sieve.twin_primes();
+        sieve.goldbach_conjecture();
 
         flops[sieve.pid] = sieve.flop;
     });
