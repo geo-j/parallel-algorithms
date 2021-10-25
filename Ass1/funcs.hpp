@@ -24,7 +24,7 @@ pair<vector<int>, vector<int>> local_sieve(int s, int b, int N, int &flops) {
                 local_primes.push_back(number);}
             
             flops ++;
-            for (int j = k + number; j <= list_len; j += number) {
+            for (int j = k + number; j < list_len; j += number) {
                 local_prime_bools[j] = 0;
 
                 flops ++;
