@@ -70,21 +70,25 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        for (auto s : local_s) {
-            for (int k = 0; k < local_prime_bools[s].size(); k ++) {
-                if (local_prime_bools[s].at(k)) {
-                    if (s + k * b <= n){
-                        world.log("%d", s + k * b);
-                        }
-                }
+    vector<int> all_local_primes;
+    for (auto s : local_s) {
+        for (int k = 0; k < local_prime_bools[s].size(); k ++) {
+            if (local_prime_bools[s].at(k)) {
+                if (s + k * b <= n){
+                    all_local_primes.push_back(s + k * b);
+                    world.log("%d", s + k * b);
+                    }
             }
         }
+    }
 
         if (pid == p - 1) {
-            vector<int> primestob = primesupto(b, world, flop);
+            vector<int> primes_to_b = primes_up_to(b, world, flop);
 
-            for (auto x : primestob)
+            for (auto x : primes_to_b) {
+                all_local_primes.push_back(x);
                 world.log("%d", x);
+            }
         }
         flops[pid] = flop;
     });

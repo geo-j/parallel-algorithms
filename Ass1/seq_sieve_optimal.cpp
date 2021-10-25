@@ -10,7 +10,11 @@ int number_to_index (int n) {
 }
 
 
+<<<<<<< HEAD
 vector<int> primesupto(int N, bulk::world& world, int &flops) {
+=======
+vector<int> primes_up_to(int N, bulk::world& world) {
+>>>>>>> e908885ec922b9c86a3592f84de6fa1dc913065a
 	int list_len = N / 2;
 	flops ++; 
 	vector<int> prime_bools (list_len, 1);
