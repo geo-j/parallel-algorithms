@@ -13,9 +13,9 @@ using namespace std;
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
     size_t n, p = env.available_processors();
-    int b = 2 * (p + 1);
+    size_t b = 2 * (p + 1);
     ofstream f;
-    vector<int> flops = vector<int>(p);
+    vector<size_t> flops = vector<size_t>(p);
 
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
@@ -35,16 +35,16 @@ int main(int argc, char* argv[]) {
     env.spawn(p, [&n, &p, &b, &flops](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
-        int flop = 0;
+        size_t flop = 0;
 
         auto pair = b_coprimes(b, pid, p, flop);
         auto local_s = pair.first;
         auto s_winners = pair.second;
 
-        map<int, map<int, int>> inverses;
-        map<int, vector<int>> local_prime_bools;
-        map<int, vector<int>> local_primes;
-        auto shared = bulk::queue<int, int[]>(world);
+        map<size_t, map<size_t, size_t>> inverses;
+        map<size_t, vector<size_t>> local_prime_bools;
+        map<size_t, vector<size_t>> local_primes;
+        auto shared = bulk::queue<size_t, size_t[]>(world);
 
         for (auto s : local_s) {
             inverses.insert({s, inverse_dict(b, s, s_winners, flop)});
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
             local_prime_bools.insert({s, pair.first});
             local_primes.insert({s, pair.second});
 
-            for (int i = 0; i < p; i ++) {
+            for (size_t i = 0; i < p; i ++) {
                 shared(i).send(s, local_primes[s]);
             }
         }
@@ -70,9 +70,9 @@ int main(int argc, char* argv[]) {
             }
         }
 
-    vector<int> all_local_primes;
+    vector<size_t> all_local_primes;
     for (auto s : local_s) {
-        for (int k = 0; k < local_prime_bools[s].size(); k ++) {
+        for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
             if (local_prime_bools[s].at(k)) {
                 if (s + k * b <= n){
                     all_local_primes.push_back(s + k * b);
@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
     }
 
         if (pid == p - 1) {
-            vector<int> primes_to_b = primes_up_to(b, flop);
+            vector<size_t> primes_to_b = primes_up_to(b, flop);
 
             for (auto x : primes_to_b) {
                 if (x <= n) {

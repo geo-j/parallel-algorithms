@@ -2,24 +2,24 @@
 #include <math.h>
 #include <iostream>
 
-int index_to_number(int i) {
+size_t index_to_number(size_t i) {
 	return 2 * (i + 1) + 1;
 }
-int number_to_index (int n) { 
+size_t number_to_index (size_t n) { 
     return n / 2 - 1;
 }
 
 
-vector<int> primes_up_to(int N, int &flops) {
-	int list_len = N / 2;
+vector<size_t> primes_up_to(size_t N, size_t &flops) {
+	size_t list_len = N / 2;
 	flops ++; 
-	vector<int> prime_bools (list_len, 1);
+	vector<size_t> prime_bools (list_len, 1);
 
-	for (int i = 0; i < list_len ; i++){
+	for (size_t i = 0; i < list_len ; i++){
 		if (prime_bools.at(i)){
-			int n = index_to_number(i);
+			size_t n = index_to_number(i);
 			flops += 6;
-			for (int j = number_to_index( n * n ) ; j < list_len; j += n){
+			for (size_t j = number_to_index( n * n ) ; j < list_len; j += n){
 				prime_bools[j] = 0;
 				flops ++;
 			}
@@ -28,9 +28,9 @@ vector<int> primes_up_to(int N, int &flops) {
 
 	}
 	
-	vector<int> primes;
+	vector<size_t> primes;
 	primes.push_back(2);
-	for (int i = 0; i < prime_bools.size(); i ++){
+	for (size_t i = 0; i < prime_bools.size(); i ++){
 		if (primes.at(i)) {
             primes.push_back(index_to_number(i));
 			flops += 4;

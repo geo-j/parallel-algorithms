@@ -4,27 +4,27 @@
 
 using namespace std;
 
-pair<vector<int>, vector<int>> local_sieve(int s, int b, int N, int &flops) {
-    int list_len =  N / b + 1;
-    int sqrtN = sqrt(N) + 1;
-    int number = s;
+pair<vector<size_t>, vector<size_t>> local_sieve(size_t s, size_t b, size_t N, size_t &flops) {
+    size_t list_len =  N / b + 1;
+    size_t sqrtN = sqrt(N) + 1;
+    size_t number = s;
 
     flops += 4;
     
-    vector<int> local_prime_bools(list_len, 1);
+    vector<size_t> local_prime_bools(list_len, 1);
     if (s == 1) {
         local_prime_bools[0] = 0;
     }
 
-    vector<int> local_primes;
+    vector<size_t> local_primes;
 
-    for (int k = 0; k < list_len; k ++) {
+    for (size_t k = 0; k < list_len; k ++) {
         if (local_prime_bools.at(k)) {
             if (number < sqrtN){
                 local_primes.push_back(number);}
             
             flops ++;
-            for (int j = k + number; j < list_len; j += number) {
+            for (size_t j = k + number; j < list_len; j += number) {
                 local_prime_bools[j] = 0;
 
                 flops ++;
@@ -39,21 +39,21 @@ pair<vector<int>, vector<int>> local_sieve(int s, int b, int N, int &flops) {
 }
     
 
-pair<vector<int>, vector<int>> b_coprimes(int b, int pid, int p, int &flops) {
-    vector<int> s_candidates(b, true);
-    vector<int> my_s, s_winners;
+pair<vector<size_t>, vector<size_t>> b_coprimes(size_t b, size_t pid, size_t p, size_t &flops) {
+    vector<size_t> s_candidates(b, true);
+    vector<size_t> my_s, s_winners;
     s_winners.push_back(1);
     if (pid == 0) {
         my_s.push_back(1);
     }
 
-    int processor_number = 1;
+    size_t processor_number = 1;
 
-    for (int s = 2; s < b; s ++) {
+    for (size_t s = 2; s < b; s ++) {
         if (s_candidates.at(s)) {
             if (b % s == 0) {
                 flops += 2;
-                for (int j = s + s; j < b; j += s) {
+                for (size_t j = s + s; j < b; j += s) {
                     s_candidates[j] = 0;
 
                     flops ++;
@@ -77,8 +77,8 @@ pair<vector<int>, vector<int>> b_coprimes(int b, int pid, int p, int &flops) {
 }
 
 
-map<int, int> inverse_dict (int b, int s, vector<int> k_list, int &flops) {
-    map<int, int> inverse_dict_s;
+map<size_t, size_t> inverse_dict (size_t b, size_t s, vector<size_t> k_list, size_t &flops) {
+    map<size_t, size_t> inverse_dict_s;
 
     for (auto k : k_list) {
         for (auto v : k_list) {
@@ -92,18 +92,18 @@ map<int, int> inverse_dict (int b, int s, vector<int> k_list, int &flops) {
     return inverse_dict_s;
 }
 
-void remove_multiples(int s, int b , int a, int sa, vector<int>& local_prime_bools,  map<int, int> inverse_dict_s, int &flops) {
-    // int sa = a mod b, but this is better passed along in application.  
+void remove_multiples(size_t s, size_t b , size_t a, size_t sa, vector<size_t>& local_prime_bools,  map<size_t, size_t> inverse_dict_s, size_t &flops) {
+    // size_t sa = a mod b, but this is better passed along in application.  
     if (sa == s){
         return;
     }
-    int l = inverse_dict_s[sa];
-    int first_multiple = l * a;
-    int starting_index = (first_multiple - s) / b;
-    int list_len = local_prime_bools.size();
+    size_t l = inverse_dict_s[sa];
+    size_t first_multiple = l * a;
+    size_t starting_index = (first_multiple - s) / b;
+    size_t list_len = local_prime_bools.size();
 
     flops += 3;
-    for (int i = starting_index; i < list_len; i += a){
+    for (size_t i = starting_index; i < list_len; i += a){
         local_prime_bools[i] = false;
         flops ++;
     }
