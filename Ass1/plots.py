@@ -8,12 +8,12 @@ P = 16
 REPEATS = 10
 
 def run_experiments():
-    for n in N:
-        for p in range(1, P):
-            for i in range(REPEATS):
+    for i in range(3):
+        for n in N:
+            for p in range(P, 0, -1):
                 print(f"======== Run {i} for n = {n} on {p} processors")
 
-                subprocess.call(['./BSPSieve', '-n', str(n), '-p', str(p)])
+                subprocess.call(['./bspsieve', '-n', str(n), '-p', str(p)])
 
 def general(df):
     plt.plot(df['p'], df['duration'])
@@ -30,11 +30,17 @@ def processor_load(df):
     plt.ylabel('FLOPS')
     plt.show()
 
-df = pd.read_csv('results.csv', names = ['n', 'p', 'duration', 'pid', 'flops'])
-# df = df.groupby(['p'])
-# print(df['flops'])
-for i in range(1, P):
-    processor_load(df[df['p'] == i])
+# df = pd.read_csv('results_old.csv', names = ['n', 'p', 'duration', 'pid', 'flops'])
+# df_duration = df.groupby(['p'])
+# df_duration = df_duration['duration'].mean().reset_index()
 
-# run_experiments()
 
+# for i in range(1, P):
+#     df_flops = df[df['p'] == i]
+#     df_flops = df_flops.groupby(['pid'])
+#     df_flops = df_flops['flops'].mean().reset_index()
+#     processor_load(df_flops)
+
+run_experiments()
+
+# general(df_duration)

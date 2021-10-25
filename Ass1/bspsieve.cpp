@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
         auto pid = world.rank(); // local processor ID
         int flop = 0;
 
-        auto pair = b_coprimes(b, pid, p);
+        auto pair = b_coprimes(b, pid, p, flop);
         auto local_s = pair.first;
         auto s_winners = pair.second;
 
@@ -47,11 +47,11 @@ int main(int argc, char* argv[]) {
         auto shared = bulk::queue<int, int[]>(world);
 
         for (auto s : local_s) {
-            inverses.insert({s, inverse_dict(b, s, s_winners)});
+            inverses.insert({s, inverse_dict(b, s, s_winners, flop)});
         }
 
         for (auto s : local_s) {
-            auto pair = local_sieve(s, b, n);
+            auto pair = local_sieve(s, b, n, flop);
             local_prime_bools.insert({s, pair.first});
             local_primes.insert({s, pair.second});
 
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
         for (auto [remote_s, remote_primes] : shared) {
             for (auto s : local_s) {
                 for (auto a : remote_primes) {
-                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverses[s]);
+                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverses[s], flop);
                 }
             }
         }
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (pid == p - 1) {
-            vector<int> primestob = primesupto(b, world);
+            vector<int> primestob = primesupto(b, world, flop);
 
             for (auto x : primestob)
                 world.log("%d", x);
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 
     f.open("results.csv", ios_base::app);
     for (int i = 0; i < p; i ++) {
-        f << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << endl;
+        f << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'o' << endl;
     }
     f.close();
 }
