@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 #include "funcs.hpp"
-#include "seq_sieve_2.cpp"
+#include "seq_sieve_optimal.cpp"
 
 using namespace std;
 
@@ -37,43 +37,43 @@ int main(int argc, char* argv[]) {
         auto pid = world.rank(); // local processor ID
         int flop = 0;
 
-        auto pair = b_coprimes(b, pid, p, world);
-        auto my_s = pair.first;
+        auto pair = b_coprimes(b, pid, p);
+        auto local_s = pair.first;
         auto s_winners = pair.second;
 
-        map<int, map<int, int>> my_inverses;
-        map<int, vector<int>> localarray;
-        map<int, vector<int>> localprimelist;
+        map<int, map<int, int>> inverses;
+        map<int, vector<int>> local_prime_bools;
+        map<int, vector<int>> local_primes;
         auto shared = bulk::queue<int, int[]>(world);
 
-        for (auto s : my_s) {
-            my_inverses.insert({s, inverse_dict(b, s_winners, s, world)});
+        for (auto s : local_s) {
+            inverses.insert({s, inverse_dict(b, s, s_winners)});
         }
 
-        for (auto s : my_s) {
-            auto pair = localSieve(s, b, n, world);
-            localarray.insert({s, pair.first});
-            localprimelist.insert({s, pair.second});
+        for (auto s : local_s) {
+            auto pair = local_sieve(s, b, n);
+            local_prime_bools.insert({s, pair.first});
+            local_primes.insert({s, pair.second});
 
             for (int i = 0; i < p; i ++) {
-                shared(i).send(s, localprimelist[s]);
+                shared(i).send(s, local_primes[s]);
             }
         }
 
         world.sync();
 
-        for (auto [remote_s, remoteprimelist] : shared) {
-            for (auto s : my_s) {
-                for (auto a : remoteprimelist) {
-                    remove_multiples(s, b, localarray[s], a, remote_s, my_inverses[s], world);
+        for (auto [remote_s, remote_primes] : shared) {
+            for (auto s : local_s) {
+                for (auto a : remote_primes) {
+                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverses[s]);
                 }
             }
         }
 
-        for (auto s : my_s) {
-            for (int k = 0; k < localarray[s].size(); k ++) {
-                if (localarray[s].at(k)) {
-                    if (s + k * b < n){
+        for (auto s : local_s) {
+            for (int k = 0; k < local_prime_bools[s].size(); k ++) {
+                if (local_prime_bools[s].at(k)) {
+                    if (s + k * b <= n){
                         world.log("%d", s + k * b);
                         }
                 }
