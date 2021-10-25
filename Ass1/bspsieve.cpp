@@ -83,11 +83,13 @@ int main(int argc, char* argv[]) {
     }
 
         if (pid == p - 1) {
-            vector<int> primes_to_b = primes_up_to(b, world, flop);
+            vector<int> primes_to_b = primes_up_to(b, flop);
 
             for (auto x : primes_to_b) {
-                all_local_primes.push_back(x);
-                world.log("%d", x);
+                if (x <= n) {
+                    all_local_primes.push_back(x);
+                    world.log("%d", x);
+                }
             }
         }
         flops[pid] = flop;
