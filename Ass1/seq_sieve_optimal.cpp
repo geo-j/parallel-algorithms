@@ -10,7 +10,7 @@ int number_to_index (int n) {
 }
 
 
-vector<int> primesupto(int N, bulk::world& world) {
+vector<int> primes_up_to(int N, bulk::world& world) {
 	int list_len = N / 2;
 	vector<int> prime_bools (list_len, 1);
 
