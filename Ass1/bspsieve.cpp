@@ -41,13 +41,13 @@ int main(int argc, char* argv[]) {
         auto local_s = pair.first;
         auto s_winners = pair.second;
 
-        map<size_t, map<size_t, size_t>> inverses;
+        map<size_t, map<size_t, size_t>> inverse_s;
         map<size_t, vector<size_t>> local_prime_bools;
         map<size_t, vector<size_t>> local_primes;
         auto shared = bulk::queue<size_t, size_t[]>(world);
 
         for (auto s : local_s) {
-            inverses.insert({s, inverse_dict(b, s, s_winners, flop)});
+            inverse_s.insert({s, inverses(b, s, s_winners, flop)});
         }
 
         for (auto s : local_s) {
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
         for (auto [remote_s, remote_primes] : shared) {
             for (auto s : local_s) {
                 for (auto a : remote_primes) {
-                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverses[s], flop);
+                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverse_s[s], flop);
                 }
             }
         }

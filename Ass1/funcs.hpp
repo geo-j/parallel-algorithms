@@ -77,19 +77,19 @@ pair<vector<size_t>, vector<size_t>> distribute_small_numbers(size_t b, size_t p
 }
 
 
-map<size_t, size_t> inverse_dict (size_t b, size_t s, vector<size_t> k_list, size_t &flops) {
-    map<size_t, size_t> inverse_dict_s;
+map<size_t, size_t> inverses (size_t b, size_t s, vector<size_t> k_list, size_t &flops) {
+    map<size_t, size_t> inverse_s;
 
     for (auto k : k_list) {
         for (auto v : k_list) {
             if ((k * v) % b == s) {
                 flops ++;
-                inverse_dict_s.insert({k, v});
+                inverse_s.insert({k, v});
                 continue;
             }
         }
     }
-    return inverse_dict_s;
+    return inverse_s;
 }
 
 void remove_multiples(size_t s, size_t b , size_t a, size_t sa, vector<size_t>& local_prime_bools,  map<size_t, size_t> inverse_dict_s, size_t &flops) {
