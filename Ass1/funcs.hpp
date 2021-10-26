@@ -39,7 +39,7 @@ pair<vector<size_t>, vector<size_t>> local_sieve(size_t s, size_t b, size_t N, s
 }
     
 
-pair<vector<size_t>, vector<size_t>> b_coprimes(size_t b, size_t pid, size_t p, size_t &flops) {
+pair<vector<size_t>, vector<size_t>> distribute_small_numbers(size_t b, size_t pid, size_t p, size_t &flops) {
     vector<size_t> s_candidates(b, true);
     vector<size_t> my_s, s_winners;
     s_winners.push_back(1);

@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
         auto pid = world.rank(); // local processor ID
         size_t flop = 0;
 
-        auto pair = b_coprimes(b, pid, p, flop);
+        auto pair = distribute_small_numbers(b, pid, p, flop);
         auto local_s = pair.first;
         auto s_winners = pair.second;
 
