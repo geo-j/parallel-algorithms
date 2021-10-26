@@ -70,17 +70,17 @@ int main(int argc, char* argv[]) {
             }
         }
 
-    vector<size_t> all_local_primes;
-    for (auto s : local_s) {
-        for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
-            if (local_prime_bools[s].at(k)) {
-                if (s + k * b <= n){
-                    all_local_primes.push_back(s + k * b);
-                    world.log("%d", s + k * b);
+        vector<size_t> all_local_primes;
+        for (auto s : local_s) {
+            for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
+                if (local_prime_bools[s].at(k)) {
+                    if (s + k * b <= n){
+                        all_local_primes.push_back(s + k * b);
+                        world.log("%d", s + k * b);
                     }
+                }
             }
         }
-    }
 
         if (pid == p - 1) {
             vector<size_t> primes_to_b = primes_up_to(b, flop);
