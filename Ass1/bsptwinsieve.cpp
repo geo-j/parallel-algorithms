@@ -6,7 +6,7 @@
 #include <vector>
 #include "funcs.hpp"
 #include "seq_sieve_optimal.cpp"
-#include "bonus.hpp"
+#include "twins.hpp"
 
 using namespace std;
 
