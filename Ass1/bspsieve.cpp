@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
         for (auto [remote_s, remote_primes] : shared) {
             for (auto s : local_s) {
                 for (auto a : remote_primes) {
-                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverse_s[s], flop);
+                    sieve_all_multiples(s, b, a, remote_s, local_prime_bools[s], inverse_s[s], flop);
                 }
             }
         }

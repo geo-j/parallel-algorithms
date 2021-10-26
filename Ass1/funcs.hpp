@@ -92,7 +92,7 @@ map<size_t, size_t> inverses (size_t b, size_t s, vector<size_t> k_list, size_t 
     return inverse_s;
 }
 
-void remove_multiples(size_t s, size_t b , size_t a, size_t sa, vector<size_t>& local_prime_bools,  map<size_t, size_t> inverse_dict_s, size_t &flops) {
+void sieve_all_multiples(size_t s, size_t b , size_t a, size_t sa, vector<size_t>& local_prime_bools,  map<size_t, size_t> inverse_dict_s, size_t &flops) {
     // size_t sa = a mod b, but this is better passed along in application.  
     if (sa == s){
         return;
