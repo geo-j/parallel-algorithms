@@ -70,12 +70,12 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        vector<size_t> all_local_primes;
+        vector<size_t> prime_list;
         for (auto s : local_s) {
             for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
                 if (local_prime_bools[s].at(k)) {
                     if (s + k * b <= n){
-                        all_local_primes.push_back(s + k * b);
+                        prime_list.push_back(s + k * b);
                         world.log("%d", s + k * b);
                     }
                 }
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 
             for (auto x : primes_to_b) {
                 if (x <= n) {
-                    all_local_primes.push_back(x);
+                    prime_list.push_back(x);
                     world.log("%d", x);
                 }
             }
