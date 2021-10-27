@@ -38,26 +38,23 @@ int main(int argc, char* argv[]) {
         auto pid = world.rank(); // local processor ID
         size_t flop = 0;
 
-        auto pair = b_coprimes(b, pid, p, flop);
+        auto pair = distribute_small_numbers(b, pid, p, flop);
         // auto local_s = pair.first;
         auto s_winners = pair.second;
-        auto twindist = twin_distribute_s(p,pid,b,s_winners, world);
-        auto local_s = twindist.second;
-        auto local_pairs = twindist.first;
+        auto twin_dist = twin_distribute_s(p, pid, b, s_winners, world);
+        auto local_s = twin_dist.second;
+        auto local_pairs = twin_dist.first;
 
         for (auto s : local_s){
             world.log("%d, %d", s, pid);}
-        
-        // for (auto s: s_winners){
-        //     world.log("%d", s);}
 
-        map<size_t, map<size_t, size_t>> inverses;
+        map<size_t, map<size_t, size_t>> inverse_s;
         map<size_t, vector<size_t>> local_prime_bools;
         map<size_t, vector<size_t>> local_primes;
         auto shared = bulk::queue<size_t, size_t[]>(world);
 
         for (auto s : local_s) {
-            inverses.insert({s, inverse_dict(b, s, s_winners, flop)});
+            inverse_s.insert({s, inverses(b, s, s_winners, flop)});
         }
 
         for (auto s : local_s) {
@@ -75,66 +72,41 @@ int main(int argc, char* argv[]) {
         for (auto [remote_s, remote_primes] : shared) {
             for (auto s : local_s) {
                 for (auto a : remote_primes) {
-                    remove_multiples(s, b, a, remote_s, local_prime_bools[s], inverses[s], flop);
+                    sieve_all_multiples(s, b, a, remote_s, local_prime_bools[s], inverse_s[s], flop);
                 }
             }
         }
 
-        // pair<vector<pair<size_t, size_t>>, vector<size_t>> twin_distribute_s ;
         vector <std::pair < size_t, size_t > > all_local_twin_primes;
-        // auto all_local_twin_primes = new vector<std::pair<size_t,size_t>>(5, std::make_pair(0, 0));
         for (auto p : local_pairs) {
             size_t s = p.first;
             size_t t = p.second;
-               if (s==1) {
-                    for (size_t k = 1; k < local_prime_bools[s].size(); k ++) {
-                       if (local_prime_bools[s].at(k)) {
-                            if(local_prime_bools[t].at(k-1)){
-                                    if (t + k * b <= n){
-                                        all_local_twin_primes.push_back(make_pair(s+k*b, t+(k-1)*b));
-                                        world.log("%d, %d, %d, %d, %d", s+k*b, t+(k-1)*b ,s,t, pid);
-                                        }
-                                    }
+            if (s==1) {
+                for (size_t k = 1; k < local_prime_bools[s].size(); k ++) {
+                    if (local_prime_bools[s].at(k)) {
+                        if (local_prime_bools[t].at(k - 1)) {
+                            if (t + k * b <= n){
+                                all_local_twin_primes.push_back(make_pair(s + k * b, t + (k - 1) * b));
+                                world.log("%d, %d, %d, %d, %d", s+k*b, t+(k-1)*b ,s,t, pid);
                             }
+                        }
+                    }
                 }
             }
-            else{ 
+            else { 
                 for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
                     if (local_prime_bools[s].at(k)) {
-                        if(local_prime_bools[t].at(k)){
-                                if (t + k * b <= n){
-                                    all_local_twin_primes.push_back(make_pair(s+k*b, t+k*b));
-                                    world.log("%d, %d, %d, %d, %d", s+k*b, t+k*b ,s,t, pid);
-                                }
+                        if (local_prime_bools[t].at(k)) {
+                            if (t + k * b <= n) {
+                                all_local_twin_primes.push_back(make_pair(s + k * b, t + k * b));
+                                world.log("%d, %d, %d, %d, %d", s+k*b, t+k*b ,s,t, pid);
+                            }
                         }
                     }
                 }
             }
         }
         
-        
-        // vector<size_t> all_local_primes;
-        // for (auto s : local_s) {
-        //     for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
-        //         if (local_prime_bools[s].at(k)) {
-        //             if (s + k * b <= n){
-        //                 all_local_primes.push_back(s + k * b);
-        //                 world.log("%d", s + k * b);
-        //             }
-        //         }
-        //     }
-        // }
-
-        // if (pid == p - 1) {
-        //     vector<size_t> primes_to_b = primes_up_to(b, flop);
-
-        //     for (auto x : primes_to_b) {
-        //         if (x <= n) {
-        //             all_local_primes.push_back(x);
-        //             world.log("%d", x);
-        //         }
-        //     }
-        // }
         flops[pid] = flop;
     });
 
@@ -144,7 +116,7 @@ int main(int argc, char* argv[]) {
 
     f.open("results.csv", ios_base::app);
     for (int i = 0; i < p; i ++) {
-        // f << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'o' << endl;
+        f << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'o' << endl;
     }
     f.close();
 }
