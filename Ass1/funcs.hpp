@@ -100,6 +100,7 @@ void sieve_all_multiples(size_t s, size_t b , size_t a, size_t sa, vector<size_t
     size_t l = inverse_dict_s[sa];
     size_t first_multiple = l * a;
     size_t starting_index = (first_multiple - s) / b;
+    // size_t starting index = first_multiple/b // should also work
     size_t list_len = local_prime_bools.size();
 
     flops += 3;
