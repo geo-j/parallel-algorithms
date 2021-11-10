@@ -6,6 +6,7 @@
 #include <vector>
 #include "funcs.hpp"
 #include "seq_sieve_optimal.cpp"
+#include "twins.hpp"
 
 using namespace std;
 
@@ -38,8 +39,14 @@ int main(int argc, char* argv[]) {
         size_t flop = 0;
 
         auto pair = distribute_small_numbers(b, pid, p, flop);
-        auto local_s = pair.first;
+        // auto local_s = pair.first;
         auto s_winners = pair.second;
+        auto twin_dist = twin_distribute_s(p, pid, b, s_winners, world);
+        auto local_s = twin_dist.second;
+        auto local_pairs = twin_dist.first;
+
+        for (auto s : local_s){
+            world.log("%d, %d", s, pid);}
 
         map<size_t, map<size_t, size_t>> inverse_s;
         map<size_t, vector<size_t>> local_prime_bools;
@@ -70,34 +77,42 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        vector<size_t> prime_list;
-        for (auto s : local_s) {
-            for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
-                if (local_prime_bools[s].at(k)) {
-                    if (s + k * b <= n){
-                        prime_list.push_back(s + k * b);
-                        world.log("%d", s + k * b);
+        vector <std::pair < size_t, size_t > > all_local_twin_primes;
+        for (auto p : local_pairs) {
+            size_t s = p.first;
+            size_t t = p.second;
+            if (s==1) {
+                for (size_t k = 1; k < local_prime_bools[s].size(); k ++) {
+                    if (local_prime_bools[s].at(k)) {
+                        if (local_prime_bools[t].at(k - 1)) {
+                            if (t + k * b <= n){
+                                all_local_twin_primes.push_back(make_pair(s + k * b, t + (k - 1) * b));
+                                world.log("%d, %d, %d, %d, %d", s+k*b, t+(k-1)*b ,s,t, pid);
+                            }
+                        }
+                    }
+                }
+            }
+            else { 
+                for (size_t k = 0; k < local_prime_bools[s].size(); k ++) {
+                    if (local_prime_bools[s].at(k)) {
+                        if (local_prime_bools[t].at(k)) {
+                            if (t + k * b <= n) {
+                                all_local_twin_primes.push_back(make_pair(s + k * b, t + k * b));
+                                world.log("%d, %d, %d, %d, %d", s+k*b, t+k*b ,s,t, pid);
+                            }
+                        }
                     }
                 }
             }
         }
-
-        if (pid == p - 1) {
-            vector<size_t> primes_to_b = primes_up_to(b, flop);
-
-            for (auto x : primes_to_b) {
-                if (x <= n) {
-                    prime_list.push_back(x);
-                    world.log("%d", x);
-                }
-            }
-        }
+        
         flops[pid] = flop;
     });
 
     const auto end = chrono::steady_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    // cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
+    cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
 
     f.open("results.csv", ios_base::app);
     for (int i = 0; i < p; i ++) {
