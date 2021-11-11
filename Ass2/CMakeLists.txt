@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(PROJECT_NAME bspsieve)
+set(PROJECT_NAME saw)
 set(BULK_PATH ${CMAKE_SOURCE_DIR}/../../Bulk/include/)
-set(EXEC saw.cpp)
+set(EXEC saw_seq.cpp)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_COMPILER "g++-11")
