@@ -9,8 +9,8 @@ int main() {
     long int n;
     vector<vector<bool>> A;
     cin >> n;
-    ofstream f("input_" + to_string(n));
-    f << n * n << endl;
+    ofstream f("input_" + to_string(n * n));
+    // f << n * n << endl;
 
     for (long int i = 0; i < n * n; i ++) {
         vector<bool> row(n * n, false);
