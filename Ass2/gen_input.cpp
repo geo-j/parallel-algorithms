@@ -22,7 +22,7 @@ int main() {
             cout << i << ' ' << j << endl;
             // cout << (j == i + 1) << ' ' << (j == i + n) << ' ' << (j % n >= 0) << ' ' << (j % n < n - 1) << endl;
             if ((j == i + 1 || j == i + n) && (j % n >= 0 && j % n <= n - 1) && !(i % n == n - 1 && j % n == 0)) {
-                cout << '\t' << "true" << endl;
+                // cout << '\t' << "true" << endl;
                 A[i][j] = true;
                 A[j][i] = true;
             }
