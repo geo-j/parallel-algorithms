@@ -1,8 +1,6 @@
 #include <iostream>
 #include <vector>
 
-const int BOARD_SIZE = 4;
-
 using namespace std;
 
 void saw(long int n, long int i, long int xi, long int yi, vector<vector<bool>> visited, vector<pair<long int, long int>> walk, long int &count) {
@@ -17,7 +15,7 @@ void saw(long int n, long int i, long int xi, long int yi, vector<vector<bool>> 
         }
         else {
             visited[xi][yi] = true;
-            if (xi + 1 < n * BOARD_SIZE) {
+            if (xi + 1 < n * n) {
                 walk.push_back(make_pair(xi + 1, yi));
                 saw(n, i + 1, xi + 1, yi, visited, walk, count);
                 walk.pop_back();
@@ -27,7 +25,7 @@ void saw(long int n, long int i, long int xi, long int yi, vector<vector<bool>> 
                 saw(n, i + 1, xi - 1, yi, visited, walk, count);
                 walk.pop_back();
             }
-            if (yi + 1 < n * BOARD_SIZE) {
+            if (yi + 1 < n * n) {
                 walk.push_back(make_pair(xi, yi + 1));
                 saw(n, i + 1, xi, yi + 1, visited, walk, count);
                 walk.pop_back();
@@ -49,8 +47,8 @@ int main() {
     vector<pair<long int, long int>> walk;
 
     cin >> n;
-    for (long int i = 0; i < n * BOARD_SIZE; i ++) {
-        vector<bool> row(n * BOARD_SIZE, false);
+    for (long int i = 0; i < n * n; i ++) {
+        vector<bool> row(n * n, false);
         visited.push_back(row);
     }
 
