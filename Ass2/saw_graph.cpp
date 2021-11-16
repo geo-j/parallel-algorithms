@@ -41,12 +41,12 @@ void saw(long int n, long int N, long int v,  vector<vector<bool>> A, long int i
 }
 
 int main() {
-    ifstream f("input");
     long int n, N, v, count = 0;
     vector<long int> walk;
     vector<vector<bool>> A;
 
-    f >> n;
+    cin >> n;
+    ifstream f("input_" + to_string(n));
     for (long int i = 0; i < n; i ++) {
         vector<bool> row(n);
         A.push_back(row);
@@ -56,7 +56,7 @@ int main() {
             A[i][j] = edge;
         }
     }
-    f >> N >> v;
+    cin >> N >> v;
     vector<bool> visited(n, false);
     walk.push_back(v);
 
