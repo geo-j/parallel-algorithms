@@ -6,55 +6,77 @@ using namespace std;
 
 const int SYNC_TIME = 100;
 
-void saw(bulk::world &world, int &time_since_last_sync, long int n, long int N, long int v,  vector<vector<int>> A, long int cur_path_len, vector<int> visited, vector<long int> walk, long int &count, long int p, long int pid) {
-    world.log("processor %d at cur_path_len %d and vertex %d", pid, cur_path_len, v);
-    // cout << i << ' ' << v + 1 << endl;
-    if (!visited.at(v)) {
-        if (cur_path_len == N) {
-            for (long int j = 0; j < walk.size(); j ++) {
-                // cout << walk.at(j) + 1 << ", ";
-                world.log("%d,", walk.at(j));
-            }
-            count ++;
-            // cout << endl;
-        }
-        else {
-            world.log("here");
-            visited[v] = true;
-            for (long int w = 0; w < n; w ++) { // for all neighbours in the adjacency matrix A
-                world.log("w = %d", w);
-                if (A[v][w]) {
-                    workload my_workload = {pid, cur_path_len, w, visited};
-                    world.log("my_workload: pid = %d, cur_path_len = %d, w = %d, visited[w] = %d, %d, %d", my_workload.pid, my_workload.cur_path_len, my_workload.w, my_workload.visited[w], SYNC_TIME, time_since_last_sync);
-                    int offloaded_work = redistribute_work(world, p, pid, my_workload, SYNC_TIME, time_since_last_sync);
-                    walk.push_back(w);               
-                    world.log("here2");
-                    if (!offloaded_work) {
-                        saw(world, time_since_last_sync, n, N, w, A, cur_path_len + 1, visited, walk, count, p, pid);
-                    }
-                    walk.pop_back();
+void saw(bulk::world &world, int &time_since_last_sync, long int n, long int N, long int v,  vector<vector<int>> A, long int cur_path_len, vector<int> visited, vector<long int> walk, long int &count, long int p, long int pid, int top) {
+    /*
+    Input: the world, the time since last sync
+    the int n, representing the size of graph
+    the int N, representing the length of the paths we are interested in
+    the int v, representing the node we are at
+    the matrix A, which is the adjecency matrix of our graph
+    the path length so far 
+    the vector of all nodes we have visited so far vector<int> visited, 
+    the vector<long int> walk, 
+    long int &count, how many walks has this processor counted. , 
+    long int p, 
+    long int pid
+
+    a boolean top which indicates whether this process is the topmost called by the current processor. 
+    */
+
+    // send done to everyone
+    // receive done and see if you can redistribute work
+
+    // share status
+    // receive messages
+
+    // int done = false;
+    if (!done){
+        if (!visited.at(v)) {
+            if (i == N) {
+                world.log("found path:");
+                count ++;
+                for (long int j = 0; j < walk.size(); j ++) {
+                    world.log("%d", walk.at(j) + 1);
                 }
+                // count ++;
+                // cout << endl;
+            }
+            else {
+                vector<int> workstack;
+                for (long int w = 0; w < n; w ++) {
+                    if (A[v][w]) {
+                        workstack.push_back(w);}
+                }
+            }
+            done = false;
+            if(top && worstack.empty()) {
+                done = true;
+            }
+    }
+
+        // communicate done, workstack 
+        world.sync();
+        // receive status from everyone
+        if (everyones votes done){
+            exit_saw;
+        }
+        else{
+            // decide whether you get new work or lose work -- redistribute the work called redundantly 
+
+            // call saw recursively on your new work
+            visited[v] = true;
+            for (workstack) {
+                walk.push_back(w);
+                saw(n, N, w, A, i + 1, visited, walk, count);
+                walk.pop_back();
             }
             visited[v] = false;
         }
-    }
-    world.log("finish recursive saw");
-    // Below should be looped somehow. 
 
-    auto pair =  ask_for_work(world, p, pid);
-
-    while (!pair.first) {
-        auto pair =  ask_for_work(world, p, pid);
     }
 
-    cur_path_len = pair.second.cur_path_len;
-    v            = pair.second.w;
-    visited     = pair.second.visited;
-    time_since_last_sync = 0;
-    saw(world, time_since_last_sync, n, N, v, A, cur_path_len + 1, visited, walk, count, p, pid);
+
 }
-
-
 
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
@@ -93,30 +115,13 @@ int main(int argc, char* argv[]) {
         long int flop = 0;
         vector<int> visited(n, false);
         long int count = 0;
-        int time_since_last_sync = SYNC_TIME - 3;
+        int time_since_last_sync = SYNC_TIME - 2;
         vector<long int> walk;
         walk.push_back(v);
 
-        if (pid == 0){
-            saw(world, time_since_last_sync, n, N, v, A, 0, visited, walk, count, p, pid);
-            world.log("finished saw processor 0");
-        } else {
-            auto pair =  ask_for_work(world, p, pid);
-
-            while (!pair.first) {
-                auto pair =  ask_for_work(world, p, pid);
-            }
-
-            long int cur_path_len = pair.second.cur_path_len;
-            v           = pair.second.w;
-            visited     = pair.second.visited;
-            time_since_last_sync = 0;
-            saw(world, time_since_last_sync, n, N, v, A, cur_path_len + 1, visited, walk, count, p, pid);
-
-            world.log("%d", count);
-        }
+        saw(world, time_since_last_sync, n, N, v, A, 0, visited, walk, count, p, pid, true);
         flops[pid] = flop;
-      
+
     });
 
     const auto end = chrono::steady_clock::now();

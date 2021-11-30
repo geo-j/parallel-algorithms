@@ -19,7 +19,7 @@ using namespace std;
 void saw(long int n, long int N, long int v,  vector<vector<bool>> A, long int i, vector<bool> visited, vector<long int> walk, long int &count) {
     // cout << i << ' ' << v + 1 << endl;
     if (!visited.at(v)) {
-        if (i == N) {
+         if (i == N) {
             for (long int j = 0; j < walk.size(); j ++) {
                 cout << walk.at(j) + 1 << ", ";
             }
