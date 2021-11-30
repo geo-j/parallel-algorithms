@@ -6,3 +6,7 @@ CMakeCache.txt
 Makefile
 *.csv
 .fuse_*
+*.zip
+input_*
+*.png
+saw
