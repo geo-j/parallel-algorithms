@@ -1,12 +1,24 @@
 #include <chrono>
 #include <fstream>
-#include "funcs.hpp"
+// #include "funcs.hpp"
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <bulk/backends/thread/thread.hpp>
+#include <bulk/bulk.hpp>
 
 using namespace std;
 
 const int SYNC_TIME = 100;
 
-void saw(bulk::world &world, int &time_since_last_sync, long int n, long int N, long int v,  vector<vector<int>> A, long int cur_path_len, vector<int> visited, vector<long int> walk, long int &count, long int p, long int pid, int top) {
+struct work {
+    long long int w;
+    vector<int> visited;
+    long long int count;
+    long long int N;
+};
+
+void saw(bulk::world &world, long int n, long int N, long long int v, vector<vector<int>> A, long int i, vector<int> visited, vector<long long int> walk, long long int &count, long int p, long int pid, work &work, vector<long long int> &final_nodes) {
     /*
     Input: the world, the time since last sync
     the int n, representing the size of graph
@@ -23,59 +35,49 @@ void saw(bulk::world &world, int &time_since_last_sync, long int n, long int N, 
     a boolean top which indicates whether this process is the topmost called by the current processor. 
     */
 
-    // send done to everyone
-    // receive done and see if you can redistribute work
-
-    // share status
-    // receive messages
-
-    // int done = false;
-    if (!done){
-        if (!visited.at(v)) {
-            if (i == N) {
-                world.log("found path:");
-                count ++;
-                for (long int j = 0; j < walk.size(); j ++) {
-                    world.log("%d", walk.at(j) + 1);
-                }
-                // count ++;
-                // cout << endl;
+    world.log("processor %d finding all paths of length %d", pid, N);
+    if (!visited.at(v)) {
+         if (i == N) {
+            for (long int j = 0; j < walk.size(); j ++) {
+                world.log("%d, ", walk.at(j) + 1);
             }
-            else {
-                vector<int> workstack;
-                for (long int w = 0; w < n; w ++) {
-                    if (A[v][w]) {
-                        workstack.push_back(w);}
-                }
-            }
-            done = false;
-            if(top && worstack.empty()) {
-                done = true;
-            }
-    }
-
-        // communicate done, workstack 
-        world.sync();
-        // receive status from everyone
-        if (everyones votes done){
-            exit_saw;
+            count ++;
+            final_nodes.push_back(v);
+            work.visited = vector<int>(visited);
         }
-        else{
-            // decide whether you get new work or lose work -- redistribute the work called redundantly 
-
-            // call saw recursively on your new work
+        else {
             visited[v] = true;
-            for (workstack) {
-                walk.push_back(w);
-                saw(n, N, w, A, i + 1, visited, walk, count);
-                walk.pop_back();
+            for (long int w = 0; w < n; w ++) {
+                if (A[v][w]) {
+                    walk.push_back(w);
+                    saw(world, n, N, w, A, i + 1, visited, walk, count, p, pid, work, final_nodes);
+                    walk.pop_back();
+                }
             }
             visited[v] = false;
         }
-
     }
+}
 
+void send_dones(bulk::world &world, long long int p, long long int pid, int done) {
+    auto send_done = bulk::queue<int>(world);
 
+    for (long long int i = 0; i < p; i ++) {
+            send_done(i).send(done);
+    }
+}
+
+void send_works(bulk::world &world, long long int p, long long int pid, vector<work> work_stack, vector<long long int> final_nodes) {
+    auto send_work = bulk::queue<long long int, int[], long long int, long long int>(world);
+
+    for (long long int i = 0; i < p; i ++) {
+        if (i != pid) {
+            for (auto work : work_stack) {
+                for (auto node : final_nodes)
+                    send_work(i).send(node, work.visited, work.count, work.N);
+            }
+        }
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -112,14 +114,53 @@ int main(int argc, char* argv[]) {
     env.spawn(p, [&n, &p, &flops, &N, &v, &A](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
-        long int flop = 0;
-        vector<int> visited(n, false);
-        long int count = 0;
+        long long int flop = 0;
+        long long int count = 0;
         int time_since_last_sync = SYNC_TIME - 2;
-        vector<long int> walk;
+        long long int cur_N = 1;
+        vector<work> work_stack;
+        vector<int> visited(n, false);
+        vector<long long int> walk;
         walk.push_back(v);
+        work_stack.push_back({v, visited, count, 1});
+        auto send_work = bulk::queue<long long int, int[], long long int, long long int>(world);
+        auto send_done = bulk::queue<int>(world);
 
-        saw(world, time_since_last_sync, n, N, v, A, 0, visited, walk, count, p, pid, true);
+
+        int done = false;
+        while (!done) {
+                world.log("here");
+            for (auto [v, visited, count, cur_N] : send_work) {
+                work_stack.push_back(work(v, visited, count, cur_N));
+            }
+
+            if (work_stack.empty()) {
+                done = true;
+            } else {
+                work work = work_stack.at(work_stack.size() - 1);
+                work_stack.pop_back();
+                vector<long long int> final_nodes;
+
+                saw(world, n, cur_N, work.w, A, cur_N, work.visited, walk, work.count, p, pid, work, final_nodes);
+
+                for (auto node : final_nodes) {
+                    work_stack.push_back({node, work.visited, work.count, cur_N + 1});
+                }
+
+                send_works(world, p, pid, work_stack, final_nodes);
+            }
+            // get work
+
+            send_dones(world, p, pid, done);
+            world.sync();
+
+            for (auto remote_done : send_done) {
+                if (!remote_done) {
+                    done = false;
+                }
+            }
+        }
+
         flops[pid] = flop;
 
     });
