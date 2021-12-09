@@ -276,10 +276,10 @@ int main(int argc, char* argv[]) {
             //     work_stack.push_back(work(v, visited, count, cur_N));
             //     world.log("processor %d received starting node = %d, count = %d, cur_N = %d", pid, v, count, cur_N);
             // }
-	    world.log("I am processor %d and I'm about to do some work", pid);//Mark
+//	    world.log("I am processor %d and I'm about to do some work", pid);//Mark
             if (work_stack.empty()) {
                 done = true;
-		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
+//		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
             } 
             else {
                 work work = work_stack.at(work_stack.size() - 1);
@@ -298,30 +298,39 @@ int main(int argc, char* argv[]) {
                 //     send_works(world, p, pid, work_stack, send_work);
                 // }
             }
- 	    world.log("I am processor %d and now am one step further !",pid);
+ 	    world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);
 	    time_since_last_sync ++;
             
             // get work
             // In order to redistribute the work, we share the lengths of our work stacks with everybody, and unpack it later. 
             //Syncing method below. 
-            if (time_since_last_sync == SYNC_TIME) {
+	    //We should sync if we are over the sync time (over instead of exactly at in case we had 0 sync time
+            if (time_since_last_sync >= SYNC_TIME) { 
+		world.log("I am processor %d and I'm gonna sync", pid);
                 //First we share how much work we have 
                 send_work_stack_lengths(world, p, pid, work_stack.size(), send_work_stack_length);
-                // send_dones(world, p, pid, done, send_done);
+		if (pid == p-1){
+		        world.log("-------------------------------------------------");
+		}
                 world.sync();
-                //Then we receive the work.  
 
+                //Then we receive the work.  
                 vector<long long int> work_stack_lengths(p, 0);
                 for (auto [remote_pid, remote_work_stack_length] : send_work_stack_length) {
                     work_stack_lengths[remote_pid]  = remote_work_stack_length;
                 }
-                // We check if we are done
+
+                // We check if we are done, which is the case if everyone has a work stack of size 0
                 done = true;
                 for (long long int i = 0 ; i < work_stack_lengths.size(); i ++){
                     if (work_stack_lengths[i] != 0 ){
                         done  = false;
                     }
                 }
+    		if (done) {
+			world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
+			world.sync();
+		}
 
                 //Now, we calculate how the work should be redistributed.
                 map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p);
@@ -332,19 +341,20 @@ int main(int argc, char* argv[]) {
                  
                 for (auto [v, visited, cur_N] : send_work) {
                     work_stack.push_back(work(v, visited, cur_N));
-                    SYNC_TIME = work_stack.size();
-                    time_since_last_sync = 0; 
+                    //SYNC_TIME = work_stack.size();
+                    //time_since_last_sync = 0; 
                     // world.log("processor %d received starting node = %d, count = %d, cur_N = %d", pid, v, count, cur_N);
                 }
+		//Now we reset our timers 
+                SYNC_TIME = work_stack.size();
+                time_since_last_sync = 0; 
                 //we now should have workstacks of comparable size for each processor.
             }
+	    world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
 
 
 
             
-                //Then we work out wether we're done and if not, how we should redistribute the work
-                
-                //Then we redistribute the work.
 
                 //we should start working on the stack again, but first we are going to reset our time_since_last_sync and our  
 
