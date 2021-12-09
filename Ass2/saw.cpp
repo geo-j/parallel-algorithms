@@ -214,7 +214,7 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 
 int main(int argc, char* argv[]) {
     bulk::thread::environment env;
-    long int n, N, v, p = env.available_processors();
+    long int n, N, v, p = 2; //env.available_processors(); //MARK
     ofstream f_out;
     vector<long int> flops(p);
     vector<vector<int>> A;
@@ -257,8 +257,12 @@ int main(int argc, char* argv[]) {
         vector<long long int> walk;
         walk.push_back(v);
 
+	//Mark initialize processor 0 as the first one with work	
+	if (pid == 0){
         work_stack.push_back(work(v, visited, path_length_so_far));
-        
+	}
+       	world.log("I am processor %d and my workstack has size %d", pid, work_stack.size()); 
+
         auto send_work              = bulk::queue<long long int, int[], long long int>(world);
         // auto send_done              = bulk::queue<int>(world);final_nodes
         auto send_work_stack_length = bulk::queue<long long int, int>(world);
@@ -272,9 +276,10 @@ int main(int argc, char* argv[]) {
             //     work_stack.push_back(work(v, visited, count, cur_N));
             //     world.log("processor %d received starting node = %d, count = %d, cur_N = %d", pid, v, count, cur_N);
             // }
-
+	    world.log("I am processor %d and I'm about to do some work", pid);//Mark
             if (work_stack.empty()) {
                 done = true;
+		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
             } 
             else {
                 work work = work_stack.at(work_stack.size() - 1);
@@ -283,6 +288,7 @@ int main(int argc, char* argv[]) {
 
 
                 saw(world, n, N, work.v, A, work.cur_path_length, work.visited, count, p, pid, work_stack);
+		world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size());//MARK
 
                 // if (work.N < N) {
                 //     // for (auto node : final_nodes) {
@@ -292,7 +298,8 @@ int main(int argc, char* argv[]) {
                 //     send_works(world, p, pid, work_stack, send_work);
                 // }
             }
-
+ 	    world.log("I am processor %d and now am one step further !",pid);
+	    time_since_last_sync ++;
             
             // get work
             // In order to redistribute the work, we share the lengths of our work stacks with everybody, and unpack it later. 
