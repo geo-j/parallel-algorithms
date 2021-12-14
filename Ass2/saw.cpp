@@ -28,7 +28,10 @@ struct work {
 // OPTIMISATIONS:
 // TODO: use an adjacency list instead of a matrix
 // TODO: make visited an integer instead of a  bool array
-// TODO: make redistribute work cyclically but not by going trough everything (do clever divisions)
+// DONE? TODO: make redistribute work cyclically but not by going trough everything (do clever divisions)
+// TODO: Make worstack a stack instead of a vector?
+// TODO: Make a neighbours function which can use a graph, but also a graph from suitesparse/ generate a square lattice by calculations so we save memory)
+
 
 void saw(bulk::world &world, long long int n, long long int N, long long int v, vector<vector<int>> A, long long int i, vector<int> visited, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
 /* given a path adds all of its one-step extensions to the workstack
