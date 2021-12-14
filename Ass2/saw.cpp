@@ -28,9 +28,10 @@ struct work {
 // OPTIMISATIONS:
 // TODO: use an adjacency list instead of a matrix
 // TODO: make visited an integer instead of a  bool array
-// DONE? TODO: make redistribute work cyclically but not by going trough everything (do clever divisions)
 // TODO: Make worstack a stack instead of a vector?
 // TODO: Make a neighbours function which can use a graph, but also a graph from suitesparse/ generate a square lattice by calculations so we save memory)
+// TODO: only pass the workstack to saw
+// DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
 
 
 void saw(bulk::world &world, long long int n, long long int N, long long int v, vector<vector<int>> A, long long int i, vector<int> visited, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
@@ -113,7 +114,7 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 	long long int fair_workload        = total_workload / p;
 	long long int procs_with_more_work = total_workload % p;
 	
-	for (int i = 0; i<p; i++){
+	for (int i = 0; i < p; i ++){
 			fair_work_stack_lengths[i] = fair_workload;
 			if (i < procs_with_more_work){
 					fair_work_stack_lengths[i] ++;
@@ -169,14 +170,14 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 int main(int argc, char* argv[]) {
 	//Starting the bulk system and taking user input
     bulk::thread::environment env;
-    long int n, N, v, p = 4; //env.available_processors(); //Should be changed, maybe part of input? 
+    long int n, N, v, p = env.available_processors(); // get available processors
     ofstream f_out;
     vector<long int> flops(p);
     vector<vector<int>> A;
 
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
-        if (arg == "-p") {
+        if (arg == "-p") {  // use a flag for the number of processors. if none, then the maximum is chosen
             p = static_cast<long long int>(stoi(argv[++ i]));
         } else {
             cerr << "wrong arguments";
@@ -214,9 +215,9 @@ int main(int argc, char* argv[]) {
         walk.push_back(v);
 
 	//Initialize processor 0 as the first one with work, no on else has any yet
-	if (pid == 0){
-        work_stack.push_back(work(v, visited, path_length_so_far));
-	}
+        if (pid == 0){
+            work_stack.push_back(work(v, visited, path_length_so_far));
+        }
        	world.log("I am processor %d and my workstack has size %d", pid, work_stack.size()); 
 
         auto send_work              = bulk::queue<long long int, int[], long long int>(world);
@@ -239,19 +240,19 @@ int main(int argc, char* argv[]) {
 
 
                 saw(world, n, N, work.v, A, work.cur_path_length, work.visited, count, p, pid, work_stack);
-		world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
+		        world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
             }
- 	    world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
-	    time_since_last_sync ++;
+ 	            world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
+	            time_since_last_sync ++;
             
-	    //We should sync if we are over the sync time to redistribute the work. 
+	        //We should sync if we are over the sync time to redistribute the work. 
             if (time_since_last_sync >= SYNC_TIME) { 
-		world.log("I am processor %d and I'm gonna sync", pid);
+		        world.log("I am processor %d and I'm gonna sync", pid);
                 //First we share how much work we have 
                 send_work_stack_lengths(world, p, pid, work_stack.size(), send_work_stack_length);
-		if (pid == p-1){
-		        world.log("-------------------------------------------------");
-		}
+                if (pid == p-1){
+                        world.log("-------------------------------------------------");
+                }
                 world.sync();
 
                 //Then we receive the work.  
@@ -267,10 +268,10 @@ int main(int argc, char* argv[]) {
                         done  = false;
                     }
                 }
-    		if (done) {
-			world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
-			world.sync();
-		}
+                if (done) {
+                    world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
+                    world.sync();
+                }
 
                 //Now, we calculate how the work should be redistributed.
                 map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p);
@@ -285,12 +286,12 @@ int main(int argc, char* argv[]) {
                     //time_since_last_sync = 0; 
                     // world.log("processor %d received starting node = %d, count = %d, cur_N = %d", pid, v, count, cur_N);
                 }
-		//Now we reset our timers 
+		        //Now we reset our timers 
                 SYNC_TIME = work_stack.size();
                 time_since_last_sync = 0; 
                 //we now should have workstacks of comparable size for each processor.
             }
-	    world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
+	        world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
 	    }
         flops[pid] = flop;
     });
