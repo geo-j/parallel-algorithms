@@ -94,7 +94,7 @@ void send_works(bulk::world &world, long long int p, long long int pid, vector<w
                 
 }
 
-map<long long int, int> redistribute_work(bulk::world &world, vector <long long int> work_stack_lengths, long long int pid, long long int p) {
+map<long long int, int> redistribute_work(bulk::world &world, vector <long long int> work_stack_lengths, long long int pid, long long int p, vector<vector<long long int>> &loads) {
 /*
  * Input ::
  * world, same as always
@@ -114,12 +114,15 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 	long long int fair_workload        = total_workload / p;
 	long long int procs_with_more_work = total_workload % p;
 	
-	for (int i = 0; i < p; i ++){
-			fair_work_stack_lengths[i] = fair_workload;
-			if (i < procs_with_more_work){
-					fair_work_stack_lengths[i] ++;
-			}
+	for (long long int i = 0; i < p; i ++){
+        fair_work_stack_lengths[i] = fair_workload;
+        if (i < procs_with_more_work){
+                fair_work_stack_lengths[i] ++;
+        }
 	}
+
+    for (long long int i = 0; i < p; i ++)
+        loads[i].push_back(fair_work_stack_lengths.at(i));
 //    // Our ideal workload is one where each processor has about the same amount of work, 
 //    // This distribution is inspired by a cyclic work distribution, which we use to not deal with rounding errors. 
 //    long long int current_pid = 0;
@@ -170,11 +173,13 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 int main(int argc, char* argv[]) {
 	//Starting the bulk system and taking user input
     bulk::thread::environment env;
-    long int n, N, v, p = env.available_processors(); // get available processors
+    long long int n, N, v, p = env.available_processors(); // get available processors
     ofstream f_out;
-    vector<long int> flops(p);
+    vector<long long int> flops(p);
+    vector<vector<long long int>> loads;
     vector<vector<int>> A;
 
+    
     for (int i = 1; i < argc; i ++) {
         string arg = argv[i];
         if (arg == "-p") {  // use a flag for the number of processors. if none, then the maximum is chosen
@@ -182,6 +187,11 @@ int main(int argc, char* argv[]) {
         } else {
             cerr << "wrong arguments";
         }
+    }
+
+    for (long long int i = 0; i < p; i ++) {
+        vector<long long int> processor(1, 0);
+        loads.push_back(processor);
     }
 
     cin >> n;
@@ -200,7 +210,7 @@ int main(int argc, char* argv[]) {
 
     const auto start = chrono::steady_clock::now();
 
-    env.spawn(p, [&n, &p, &flops, &N, &v, &A](auto& world) {
+    env.spawn(p, [&n, &p, &flops, &N, &v, &A, &loads](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
         long long int flop       = 0;
@@ -218,7 +228,7 @@ int main(int argc, char* argv[]) {
         if (pid == 0){
             work_stack.push_back(work(v, visited, path_length_so_far));
         }
-       	world.log("I am processor %d and my workstack has size %d", pid, work_stack.size()); 
+       	// world.log("I am processor %d and my workstack has size %d", pid, work_stack.size()); 
 
         auto send_work              = bulk::queue<long long int, int[], long long int>(world);
         // auto send_done              = bulk::queue<int>(world);final_nodes
@@ -240,17 +250,17 @@ int main(int argc, char* argv[]) {
 
 
                 saw(world, n, N, work.v, A, work.cur_path_length, work.visited, count, p, pid, work_stack);
-		        world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
+		        // world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
             }
- 	            world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
+ 	            // world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
 	            time_since_last_sync ++;
             
 	        //We should sync if we are over the sync time to redistribute the work. 
             if (time_since_last_sync >= SYNC_TIME) { 
-		        world.log("I am processor %d and I'm gonna sync", pid);
+		        // world.log("I am processor %d and I'm gonna sync", pid);
                 //First we share how much work we have 
                 send_work_stack_lengths(world, p, pid, work_stack.size(), send_work_stack_length);
-                if (pid == p-1){
+                if (pid == p - 1){
                         world.log("-------------------------------------------------");
                 }
                 world.sync();
@@ -274,7 +284,9 @@ int main(int argc, char* argv[]) {
                 }
 
                 //Now, we calculate how the work should be redistributed.
-                map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p);
+                loads[pid].push_back(work_stack.size());
+                world.log("%d", loads.at(pid).at(1));
+                map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p, loads);
                 // Then, we share the work we need to share
                 send_works(world, p, pid, work_stack, send_work, shared_work);
                 world.sync();
@@ -291,7 +303,7 @@ int main(int argc, char* argv[]) {
                 time_since_last_sync = 0; 
                 //we now should have workstacks of comparable size for each processor.
             }
-	        world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
+	        // world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
 	    }
         flops[pid] = flop;
     });
@@ -300,9 +312,14 @@ int main(int argc, char* argv[]) {
     auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
     cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
 
-    f_out.open("results.csv", ios_base::app);
-    for (int i = 0; i < p; i ++) {
-        f_out << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'p' << endl;
+    f_out.open("loads2.csv", ios_base::app);
+    for (long long int i = 0; i < p; i ++) {
+        // f_out << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'p' << endl;
+        long long int j = 0;
+        for (auto load : loads.at(i)) {
+            j ++;
+            f_out << j << ',' << i << ',' << load << endl;
+        }
     }
     f_out.close();
 }
