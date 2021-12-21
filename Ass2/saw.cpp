@@ -34,7 +34,7 @@ struct work {
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
 
 
-void saw(bulk::world &world, long long int n, long long int N, long long int v, vector<vector<int>> A, long long int i, vector<int> visited, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
+void saw(bulk::world &world, long long int n, long long int N, vector<vector<int>> A, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
 /* given a path adds all of its one-step extensions to the workstack
  *
  * Input: the world, the time since last sync
@@ -53,19 +53,21 @@ void saw(bulk::world &world, long long int n, long long int N, long long int v, 
  *        if the path length is the needed one we increment the count
  *        otherwise, we add all neighbours of v to the workstack as if we were travelling there. 
  */
+    work task = work_stack.at(work_stack.size() - 1);
+    work_stack.pop_back();
     //First we check whether we have visited this node already 
-    if (!visited.at(v)) {
+    if (!task.visited.at(task.v)) {
 	 // Then we check whether our path is of the needed length
-         if (i == N) {
+         if (task.cur_path_length == N) {
             count ++;
         }
 	// If not, we will add all extensions of the path to our workstack
         else {
-            visited[v] = true;
+            task.visited[task.v] = true;
             for (long int w = 0; w < n; w ++) {
-                if (A[v][w]) {
+                if (A[task.v][w]) {
                     // We should take care to send a copy of visited as it will be different the next time we call it. 
-                    work_stack.push_back(work(w, vector<int>(visited), i + 1));
+                    work_stack.push_back(work(w, vector<int>(task.visited), task.cur_path_length + 1));
                 }
             }
         }
@@ -94,7 +96,7 @@ void send_works(bulk::world &world, long long int p, long long int pid, vector<w
                 
 }
 
-map<long long int, int> redistribute_work(bulk::world &world, vector <long long int> work_stack_lengths, long long int pid, long long int p, vector<vector<long long int>> &loads) {
+map<long long int, int> redistribute_work(bulk::world &world, vector <long long int> work_stack_lengths, long long int pid, long long int p) {
 /*
  * Input ::
  * world, same as always
@@ -121,8 +123,8 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
         }
 	}
 
-    for (long long int i = 0; i < p; i ++)
-        loads[i].push_back(fair_work_stack_lengths.at(i));
+    // for (long long int i = 0; i < p; i ++)
+    //     loads[i].push_back(fair_work_stack_lengths.at(i));
 //    // Our ideal workload is one where each processor has about the same amount of work, 
 //    // This distribution is inspired by a cyclic work distribution, which we use to not deal with rounding errors. 
 //    long long int current_pid = 0;
@@ -176,7 +178,7 @@ int main(int argc, char* argv[]) {
     long long int n, N, v, p = env.available_processors(); // get available processors
     ofstream f_out;
     vector<long long int> flops(p);
-    vector<vector<long long int>> loads;
+    // vector<vector<long long int>> loads;
     vector<vector<int>> A;
 
     
@@ -189,10 +191,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    for (long long int i = 0; i < p; i ++) {
-        vector<long long int> processor(1, 0);
-        loads.push_back(processor);
-    }
+    // for (long long int i = 0; i < p; i ++) {
+    //     vector<long long int> processor(1, 0);
+    //     loads.push_back(processor);
+    // }
 
     cin >> n;
     ifstream f_in("input_" + to_string(n));
@@ -210,7 +212,7 @@ int main(int argc, char* argv[]) {
 
     const auto start = chrono::steady_clock::now();
 
-    env.spawn(p, [&n, &p, &flops, &N, &v, &A, &loads](auto& world) {
+    env.spawn(p, [&n, &p, &flops, &N, &v, &A](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
         long long int flop       = 0;
@@ -244,16 +246,12 @@ int main(int argc, char* argv[]) {
 //		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
             } 
             else {
-                work work = work_stack.at(work_stack.size() - 1);
-                work_stack.pop_back();
                 // world.log("processor %d does work starting node = %d, count = %d, path length = %d", pid, work.w, count, work.N);
-
-
-                saw(world, n, N, work.v, A, work.cur_path_length, work.visited, count, p, pid, work_stack);
+                saw(world, n, N, A, count, p, pid, work_stack);
 		        // world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
             }
  	            // world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
-	            time_since_last_sync ++;
+            time_since_last_sync ++;
             
 	        //We should sync if we are over the sync time to redistribute the work. 
             if (time_since_last_sync >= SYNC_TIME) { 
@@ -284,9 +282,9 @@ int main(int argc, char* argv[]) {
                 }
 
                 //Now, we calculate how the work should be redistributed.
-                loads[pid].push_back(work_stack.size());
-                world.log("%d", loads.at(pid).at(1));
-                map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p, loads);
+                // loads[pid].push_back(work_stack.size());
+                // world.log("%d", loads.at(pid).at(1));
+                map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p);
                 // Then, we share the work we need to share
                 send_works(world, p, pid, work_stack, send_work, shared_work);
                 world.sync();
@@ -312,14 +310,14 @@ int main(int argc, char* argv[]) {
     auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
     cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
 
-    f_out.open("loads2.csv", ios_base::app);
-    for (long long int i = 0; i < p; i ++) {
-        // f_out << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'p' << endl;
-        long long int j = 0;
-        for (auto load : loads.at(i)) {
-            j ++;
-            f_out << j << ',' << i << ',' << load << endl;
-        }
-    }
+    // f_out.open("loads2.csv", ios_base::app);
+    // for (long long int i = 0; i < p; i ++) {
+    //     // f_out << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'p' << endl;
+    //     long long int j = 0;
+    //     for (auto load : loads.at(i)) {
+    //         j ++;
+    //         f_out << j << ',' << i << ',' << load << endl;
+    //     }
+    // }
     f_out.close();
 }
