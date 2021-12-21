@@ -31,8 +31,9 @@ struct work {
 
 // OPTIMISATIONS:
 // TODO: make visited an integer instead of a  bool array
-// TODO: Make worstack a stack instead of a vector?
-// TODO: Make a neighbours function which can use a graph, but also a graph from suitesparse/ generate a square lattice by calculations so we save memory)
+// NOTWORTHIT: Make worstack a stack instead of a vector?
+// TODO: Make a neighbours function which can use a graph from suitesparse/ 
+// DONE: generate a square lattice by calculations so we save memory)
 // DONE: use an adjacency list instead of a matrix
 // DONE: only pass the workstack to saw
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
@@ -45,7 +46,7 @@ vector<long long int> neighbours (long long int N, int d, long long int v){
 
         Output:
         a list of all neighbours of v in a d-dimensional grid of size N
-        the centre of this grid should have coordinate pow(2*n,d). 
+        the centre of this grid should have coordinate pow(n+2,d). 
         Then in a diamond of size N around this centre, 
         the neigbhours should match up, and all have positive values. 
     */
@@ -58,6 +59,42 @@ vector<long long int> neighbours (long long int N, int d, long long int v){
     return neighbors;
 }
 
+vector<work> starting_L (long long int N, int d){
+    /* Should give all paths going left i times and then upwards, in the counting as in the neighbour function.
+
+    Input 
+        N: maximal path length
+        d: dimensions. 
+
+    In a regular square lattice we can make use of symmetry to do less work. 
+    We can assume all starting paths are of an L-shape: first we go in one direction i times, then we take one step in another direction. 
+    Output: all starting work of such paths. 
+
+    This symmetry should be counted 2*d amount of times. 
+    There is also a path which is not L-shaped, but | -shaped, a straight line. This also happens 2d times, 
+    Together the |-shape of size N and all the L-shaped give all starting paths modulo symmetry. 
+
+    Thus we can distribute all the L-shaped starting paths cyclically, 
+    initialize the count of one processor to 1 instead of 0 
+    and multiply the end result by 2*d to get the total number of paths. 
+      
+    
+    */
+    vector<work> starting_positions;
+    
+    long long int centre = pow(N+2, d ) ;
+    long long int startpos = centre + N + 2; 
+    auto visited = vector <int> (2 * centre);
+    visited[centre] = 1;
+
+    for (int i = 1; i < N; i++){
+        visited[centre + i] = 1;
+        startpos ++ ; 
+        work workload =  {startpos, vector<int>(visited), i+1};
+        starting_positions.push_back(work(workload) );
+    }
+    return vector<work>(starting_positions);
+}
 
 void saw(bulk::world &world,  int d, long long int N, vector<vector<int>> A, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
 /* given a path adds all of its one-step extensions to the workstack
@@ -239,7 +276,7 @@ int main(int argc, char* argv[]) {
     //     }
     // }
     cin >> N;
-    v = pow(2*N,d);
+    v = pow( N+2, d );
 	cout << "N = " << N <<", d = " << d << ", v = " << v << ", p = " << p << endl; 
 
     const auto start = chrono::steady_clock::now();
@@ -255,15 +292,22 @@ int main(int argc, char* argv[]) {
         vector<work> work_stack;
         vector<int> visited(2 * v, false);
         // bitset<d> visited;
-        vector<long long int> final_nodes;
-        vector<long long int> walk;
-        walk.push_back(v);
+        // vector<long long int> final_nodes;
+        // vector<long long int> walk;
+        // walk.push_back(v);
 
 	//Initialize processor 0 as the first one with work, no on else has any yet
-        if (pid == 0){
-            work_stack.push_back(work(v, visited, path_length_so_far));
+        // if (pid == 0){
+        //     work_stack.push_back(work(v, visited, path_length_so_far));
+        // }
+    //distribute  the starting positions cyclically
+        auto starting_positions = starting_L(N, d);
+        world.log("There are %d starting positions",starting_positions.size());
+        world.sync();
+        // world.log("I see a path length of %d", starting_positions.at(0).cur_path_length);
+        for (long long int i = pid; i < starting_positions.size(); i += p){
+            work_stack.push_back(starting_positions.at(i));
         }
-
         
 
        	// world.log("I am processor %d and my workstack has size %d", pid, work_stack.size()); 
@@ -278,6 +322,7 @@ int main(int argc, char* argv[]) {
         while (!done) {
 //	    world.log("I am processor %d and I'm about to do some work", pid);//Mark
             if (work_stack.empty()) {
+                // world.sync();
                 done = true;
 //		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
             } 
@@ -314,15 +359,23 @@ int main(int argc, char* argv[]) {
                 }
                 if (done) {
                     world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
-                    auto foundnumber = bulk::queue<long long int>(world);
-                    foundnumber(0).send(count);
+                    auto remote_counts = bulk::queue<long long int>(world);
+                    remote_counts(0).send(count);
                     world.sync();
                     if (pid == 0){
                         long long int total = 0;
-                        for (auto n:foundnumber){
+                        for (auto n : remote_counts) {
                             total += n; 
                         }
-                        world.log("The total count is now %d", total);
+                        // Multiply by 4d and add 2d for end result
+                        // The adding of 2d corresponds to all paths which are | shaped
+                        // The multiplying by 4d corresponds to mirroring (*2) and laying the starting segment in any axis (*d) in any direction (*2)
+                        if (N != 0) {
+                            world.log("The total count is now %d", total * 4 * d + 2 * d);
+                        }
+                        else {
+                            world.log("There is only 1 path  of length 0, you shouldn't need a computer for this. ");
+                        }
                     }
                     world.sync();
                 }
