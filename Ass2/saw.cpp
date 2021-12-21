@@ -197,7 +197,7 @@ int main(int argc, char* argv[]) {
     // }
 
     cin >> n;
-    ifstream f_in("input_" + to_string(n));
+    ifstream f_in("input/input_" + to_string(n));
     for (long long int i = 0; i < n; i ++) {
         vector<int> row(n);
         A.push_back(row);
