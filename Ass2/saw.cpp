@@ -30,7 +30,7 @@ struct work {
 // TODO: make visited an integer instead of a  bool array
 // TODO: Make worstack a stack instead of a vector?
 // TODO: Make a neighbours function which can use a graph, but also a graph from suitesparse/ generate a square lattice by calculations so we save memory)
-// TODO: only pass the workstack to saw
+// DONE: only pass the workstack to saw
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
 
 
@@ -64,12 +64,13 @@ void saw(bulk::world &world, long long int n, long long int N, vector<vector<int
 	// If not, we will add all extensions of the path to our workstack
         else {
             task.visited[task.v] = true;
-            for (long int w = 0; w < n; w ++) {
-                if (A[task.v][w]) {
+            // for (long int w = 0; w < n; w ++) {
+            //     if (A[task.v][w]) {
+            for (auto w : A[task.v])
                     // We should take care to send a copy of visited as it will be different the next time we call it. 
                     work_stack.push_back(work(w, vector<int>(task.visited), task.cur_path_length + 1));
-                }
-            }
+                // }
+            // }
         }
     }
 }
@@ -201,10 +202,13 @@ int main(int argc, char* argv[]) {
     for (long long int i = 0; i < n; i ++) {
         vector<int> row(n);
         A.push_back(row);
+        // adjacency_list.push_back(row);
         for (long int j = 0; j < n; j ++) {
             int edge;
             f_in >> edge;
-            A[i][j] = edge;
+            // A[i][j] = edge;
+            if (edge)
+                A[i].push_back(j);
         }
     }
     cin >> N >> v;
