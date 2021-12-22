@@ -411,9 +411,13 @@ int main(int argc, char* argv[]) {
     // - runtime
     //  > sequential saw against p = 1, 2, 4, 8, 16, 32, 64, 128, 256
     // - # syncs
+    //  > fix p, vary n 
     // - load before sync
     //  > min load, max load, desired load
-    // - walk clock time in between SYNC_TIMEs
+    //  > bar plot maybe
+    // - wall clock time in between SYNC_TIMEs
+    // - # ops
+    // remember: write to output pipe to file
 
     // f_out.open("loads2.csv", ios_base::app);
     // for (long long int i = 0; i < p; i ++) {
