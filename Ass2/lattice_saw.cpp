@@ -16,8 +16,6 @@ using namespace std;
  * It does so in a parallel fashion by load-balancing workstacks of different processors. 
  */
 
-// const int d = 4;
-
 struct work {
 /* A piece of work consists of a path,
  * we keep track of -the end point of our path
@@ -408,6 +406,14 @@ int main(int argc, char* argv[]) {
     const auto end = chrono::steady_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
     cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
+
+    // data to collect:
+    // - runtime
+    //  > sequential saw against p = 1, 2, 4, 8, 16, 32, 64, 128, 256
+    // - # syncs
+    // - load before sync
+    //  > min load, max load, desired load
+    // - walk clock time in between SYNC_TIMEs
 
     // f_out.open("loads2.csv", ios_base::app);
     // for (long long int i = 0; i < p; i ++) {
