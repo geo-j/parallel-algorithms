@@ -36,7 +36,7 @@ struct work {
 // DONE: only pass the workstack to saw
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
 
-vector<long long int> neighbours (long long int N, int d, long long int v){
+vector<long long int> neighbours(long long int N, int d, long long int v, long long int pid, vector<long long int> &flops){
     /* Input:
         d for the dimension
         N for the max size of the walk
@@ -50,14 +50,17 @@ vector<long long int> neighbours (long long int N, int d, long long int v){
     */
     vector<long long int> neighbors;
 
-    for (int i = 0 ; i<d; i++){
-        neighbors.push_back(v + pow((N+2),i));
-        neighbors.push_back(v - pow((N+2),i));
+    for (int i = 0 ; i < d; i ++){
+        neighbors.push_back(v + pow((N + 2), i));
+        neighbors.push_back(v - pow((N + 2), i));
+
+        flops[pid] += 7;
     }
+
     return neighbors;
 }
 
-vector<work> starting_L (long long int N, int d){
+vector<work> starting_L (long long int N, int d, long long int pid, vector<long long int> &flops){
     /* Should give all paths going left i times and then upwards, in the counting as in the neighbour function.
 
     Input 
@@ -80,21 +83,25 @@ vector<work> starting_L (long long int N, int d){
     */
     vector<work> starting_positions;
     
-    long long int centre = pow(N+2, d ) ;
+    long long int centre = pow(N + 2, d) ;
     long long int startpos = centre + N + 2; 
-    auto visited = vector <int> (2 * centre);
+    auto visited = vector<int>(2 * centre);
     visited[centre] = 1;
 
-    for (int i = 1; i < N; i++){
+    flops[pid] += 5;
+
+    for (int i = 1; i < N; i ++) {
         visited[centre + i] = 1;
-        startpos ++ ; 
-        work workload =  {startpos, vector<int>(visited), i+1};
-        starting_positions.push_back(work(workload) );
+        startpos ++; 
+        work workload =  {startpos, vector<int>(visited), i + 1};
+        starting_positions.push_back(work(workload));
+
+        flops[pid] += 4;
     }
     return vector<work>(starting_positions);
 }
 
-void saw(bulk::world &world,  int d, long long int N, vector<vector<int>> A, long long int &count, long long int p, long long int pid, vector<work> &work_stack) {
+void saw(int d, long long int N, long long int &count, long long int p, long long int pid, vector<work> &work_stack, vector<long long int> &flops) {
 /* given a path adds all of its one-step extensions to the workstack
  *
  * Input: the world, the time since last sync
@@ -127,38 +134,45 @@ void saw(bulk::world &world,  int d, long long int N, vector<vector<int>> A, lon
             // for (long int w = 0; w < n; w ++) {
             //     if (A[task.v][w]) {
             // for (auto w : A[task.v])
-            for (auto w: neighbours(N, d, task.v))
+            for (auto w : neighbours(N, d, task.v, pid, flops))
                     // We should take care to send a copy of visited as it will be different the next time we call it. 
                     work_stack.push_back(work(w, vector<int>(task.visited), task.cur_path_length + 1));
                 // }
             // }
         }
     }
+
+    flops[pid] += 3;
 }
 
-void send_work_stack_lengths(bulk::world &world, long long int p, long long int pid, int work_stack_length, bulk::queue<long long int, int> &send_work_stack_length) {
+void send_work_stack_lengths(long long int p, long long int pid, int work_stack_length, bulk::queue<long long int, int> &send_work_stack_length, vector<long long int> &flops) {
 /* shares the lengths of the work stacks to all other processors
  */	
     for (long long int i = 0; i < p; i ++) {
         send_work_stack_length(i).send(pid, work_stack_length);
+
+        flops[pid] ++;
     }
 }
 
-void send_works(bulk::world &world, long long int p, long long int pid, vector<work> &work_stack, bulk::queue<long long int, int[], long long int> &send_work, map<long long int, int> shared_works) {
+void send_works(long long int p, long long int pid, vector<work> &work_stack, bulk::queue<long long int, int[], long long int> &send_work, map<long long int, int> shared_works, vector<long long int> &flops) {
 /* sends the work according to the redistribution method as below */
     for (std::pair<long long int, int> shared_work : shared_works){
         long long int target_processor = shared_work.first;
         long long int offloaded_workload = shared_work.second;
+
         for (long long int i = 0; i < offloaded_workload; i ++) {
             work work_to_send = work_stack.at(work_stack.size() - 1);
             work_stack.pop_back();
             send_work(target_processor).send(work_to_send.v, work_to_send.visited, work_to_send.cur_path_length);
+
+            flops[pid] += 2;
         }
     }
                 
 }
 
-map<long long int, int> redistribute_work(bulk::world &world, vector <long long int> work_stack_lengths, long long int pid, long long int p) {
+map<long long int, int> redistribute_work(vector <long long int> work_stack_lengths, long long int pid, long long int p, vector<long long int> &flops) {
 /*
  * Input ::
  * world, same as always
@@ -173,16 +187,23 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
     //First calculate the total amount of work
     long long int total_workload = accumulate(work_stack_lengths.begin(), work_stack_lengths.end(), 0);
 
+    flops[pid] += work_stack_lengths.size();
+
     // Our ideal workload is one where each processor has about the same amount of work, 
     vector<long long int> fair_work_stack_lengths(p, 0);
 	long long int fair_workload        = total_workload / p;
 	long long int procs_with_more_work = total_workload % p;
+
+    flops[pid] += 2;
 	
 	for (long long int i = 0; i < p; i ++){
         fair_work_stack_lengths[i] = fair_workload;
         if (i < procs_with_more_work){
-                fair_work_stack_lengths[i] ++;
+            fair_work_stack_lengths[i] ++;
+
+            flops[pid] ++;
         }
+        flops[pid] ++;
 	}
 
     // for (long long int i = 0; i < p; i ++)
@@ -199,19 +220,25 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
     //the following loop will go trough how the work should be offloaded by everyone 
     //when we are at our own processor and we see we should offload work, 
     // we'll keep track of it and actually put it in the map
+    flops[pid] ++;
     for (long long int current_offloader = 0; current_offloader < pid + 1; current_offloader ++) {
         long long int current_receiver = 0;
-        while (work_stack_lengths[current_offloader] - fair_work_stack_lengths[current_offloader] > 0) {    
+        while (work_stack_lengths[current_offloader] - fair_work_stack_lengths[current_offloader] > 0) {
 			// as long as we still have work to offload we give work to anyone who needs it
             long long int receiver_needs = work_stack_lengths[current_receiver] - fair_work_stack_lengths[current_receiver];
+
+            flops[pid] += 2;  
             if (receiver_needs < 0) {    // for anyone who still needs work
                 long long int can_offload = work_stack_lengths[current_offloader] - fair_work_stack_lengths[current_offloader];
                 long long int offloaded;
 				//We should not give away so much work that we don' t have any anymore
+                flops[pid] ++;
                 if (abs(receiver_needs) > can_offload) {
                     work_stack_lengths[current_offloader] -= can_offload;
                     work_stack_lengths[current_receiver]  += can_offload;
                     offloaded = can_offload;
+
+                    flops[pid] += 2;
                 }
                 else {
                     //keep in mind that receiver needs is negative
@@ -219,6 +246,7 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
                     work_stack_lengths[current_receiver]  -= receiver_needs;
                     offloaded = -receiver_needs;
 
+                    flops[pid] += 3;
                 }
 				// Now if we have given away work, we should keep track of it so we can actually do it later
                 if (current_offloader == pid) {
@@ -226,6 +254,8 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
                 }
             }
             current_receiver ++;
+
+            flops[pid] += 2;
         }
     }
     return sharing_map;
@@ -237,10 +267,8 @@ map<long long int, int> redistribute_work(bulk::world &world, vector <long long 
 int main(int argc, char* argv[]) {
 	//Starting the bulk system and taking user input
     bulk::thread::environment env;
-    long long int n, N, v, p = env.available_processors(); // get available processors
+    long long int N, v, p = env.available_processors(); // get available processors
     ofstream f_out;
-    vector<long long int> flops(p);
-    // vector<vector<long long int>> loads;
     vector<vector<int>> A;
     int d;
 
@@ -254,10 +282,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // for (long long int i = 0; i < p; i ++) {
-    //     vector<long long int> processor(1, 0);
-    //     loads.push_back(processor);
-    // }
+    vector<long long int> flops(p), syncs(p);
 
     cin >> d;
     // ifstream f_in("input_" + to_string(n));
@@ -279,7 +304,7 @@ int main(int argc, char* argv[]) {
 
     const auto start = chrono::steady_clock::now();
 
-    env.spawn(p, [&d, &p, &flops, &N, &v, &A](auto& world) {
+    env.spawn(p, [&d, &p, &flops, &N, &v, &syncs](auto& world) {
         // init local processors
         auto pid = world.rank(); // local processor ID
         long long int flop       = 0;
@@ -289,22 +314,25 @@ int main(int argc, char* argv[]) {
         long long int path_length_so_far = 0;
         vector<work> work_stack;
         vector<int> visited(2 * v, false);
-        // bitset<d> visited;
-        // vector<long long int> final_nodes;
-        // vector<long long int> walk;
-        // walk.push_back(v);
+        auto start_sync = chrono::steady_clock::now();
+        auto begin = chrono::steady_clock::now();
+
+
+
 
 	//Initialize processor 0 as the first one with work, no on else has any yet
         // if (pid == 0){
         //     work_stack.push_back(work(v, visited, path_length_so_far));
         // }
     //distribute  the starting positions cyclically
-        auto starting_positions = starting_L(N, d);
+        auto starting_positions = starting_L(N, d, pid, flops);
         // world.log("There are %d starting positions",starting_positions.size());
         // world.sync();
         // world.log("I see a path length of %d", starting_positions.at(0).cur_path_length);
         for (long long int i = pid; i < starting_positions.size(); i += p){
             work_stack.push_back(starting_positions.at(i));
+
+            flops[pid] ++;
         }
         
 
@@ -326,18 +354,25 @@ int main(int argc, char* argv[]) {
             } 
             else {
                 // world.log("processor %d does work starting node = %d, count = %d, path length = %d", pid, work.w, count, work.N);
-                saw(world, d, N, A, count, p, pid, work_stack);
+                saw(d, N, count, p, pid, work_stack, flops);
 		        // world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
             }
  	            // world.log("I am processor %d and it has been %d since I synced, I'll sync at %d !",pid,time_since_last_sync,SYNC_TIME);// Mark
             time_since_last_sync ++;
+
+            flops[pid] ++;
             
 	        //We should sync if we are over the sync time to redistribute the work. 
-            if (time_since_last_sync >= SYNC_TIME) { 
+            if (time_since_last_sync >= SYNC_TIME) {
+                syncs[pid] ++;
+                auto end_sync = chrono::steady_clock::now();
+                auto duration = chrono::duration_cast<chrono::milliseconds>(end_sync - start_sync).count();
+                start_sync = chrono::steady_clock::now();
+                auto current_time = chrono::duration_cast<chrono::milliseconds>(end_sync - begin).count();
 		        // world.log("I am processor %d and I'm gonna sync", pid);
-                world.log("%d, %d, %d, %d, %d", d, N, p, pid, work_stack.size());
+                world.log("%lld, %d, %d, %d, %d, %d, %d", current_time, d, N, p, pid, work_stack.size(), duration);
                 //First we share how much work we have 
-                send_work_stack_lengths(world, p, pid, work_stack.size(), send_work_stack_length);
+                send_work_stack_lengths(p, pid, work_stack.size(), send_work_stack_length, flops);
                 // if (pid == p - 1){
                 //         world.log("-------------------------------------------------");
                 // }
@@ -355,6 +390,8 @@ int main(int argc, char* argv[]) {
                     if (work_stack_lengths[i] != 0 ){
                         done  = false;
                     }
+
+                    flops[pid] ++;
                 }
                 if (done) {
                     // world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
@@ -365,6 +402,8 @@ int main(int argc, char* argv[]) {
                         long long int total = 0;
                         for (auto n : remote_counts) {
                             total += n; 
+
+                            // flops[pid] ++;
                         }
                         // Multiply by 4d and add 2d for end result
                         // The adding of 2d corresponds to all paths which are | shaped
@@ -382,9 +421,9 @@ int main(int argc, char* argv[]) {
                 //Now, we calculate how the work should be redistributed.
                 // loads[pid].push_back(work_stack.size());
                 // world.log("%d", loads.at(pid).at(1));
-                map<long long int, int> shared_work = redistribute_work(world, work_stack_lengths, pid, p);
+                map<long long int, int> shared_work = redistribute_work(work_stack_lengths, pid, p, flops);
                 // Then, we share the work we need to share
-                send_works(world, p, pid, work_stack, send_work, shared_work);
+                send_works(p, pid, work_stack, send_work, shared_work, flops);
                 world.sync();
                 //Finally we add the work we received  to our workstack 
                  
@@ -401,11 +440,11 @@ int main(int argc, char* argv[]) {
             }
 	        // world.log("I am processor %d and just have shared some work, my worstack has size %d", pid, work_stack.size());
 	    }
-        flops[pid] = flop;
+        // flops[pid] = flop;
     });
 
     const auto end = chrono::steady_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
     // cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
 
     // data to collect:
@@ -420,14 +459,14 @@ int main(int argc, char* argv[]) {
     // - # ops
     // remember: write to output pipe to file
 
-    // f_out.open("loads2.csv", ios_base::app);
-    // for (long long int i = 0; i < p; i ++) {
-    //     // f_out << n << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << 'p' << endl;
-    //     long long int j = 0;
-    //     for (auto load : loads.at(i)) {
-    //         j ++;
-    //         f_out << j << ',' << i << ',' << load << endl;
-    //     }
-    // }
+    f_out.open("runtime.csv", ios_base::app);
+    for (long long int i = 0; i < p; i ++) {
+        f_out << d << ',' << N << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << syncs.at(i) << endl;
+        // long long int j = 0;
+        // for (auto load : loads.at(i)) {
+        //     j ++;
+        //     f_out << j << ',' << i << ',' << load << endl;
+        // }
+    }
     f_out.close();
 }
