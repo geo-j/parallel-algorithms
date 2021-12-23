@@ -274,8 +274,8 @@ int main(int argc, char* argv[]) {
     //     }
     // }
     cin >> N;
-    v = pow( N+2, d );
-	cout << "N = " << N <<", d = " << d << ", v = " << v << ", p = " << p << endl; 
+    v = pow(N + 2, d);
+	// cout << "N = " << N <<", d = " << d << ", v = " << v << ", p = " << p << endl; 
 
     const auto start = chrono::steady_clock::now();
 
@@ -300,8 +300,8 @@ int main(int argc, char* argv[]) {
         // }
     //distribute  the starting positions cyclically
         auto starting_positions = starting_L(N, d);
-        world.log("There are %d starting positions",starting_positions.size());
-        world.sync();
+        // world.log("There are %d starting positions",starting_positions.size());
+        // world.sync();
         // world.log("I see a path length of %d", starting_positions.at(0).cur_path_length);
         for (long long int i = pid; i < starting_positions.size(); i += p){
             work_stack.push_back(starting_positions.at(i));
@@ -335,6 +335,7 @@ int main(int argc, char* argv[]) {
 	        //We should sync if we are over the sync time to redistribute the work. 
             if (time_since_last_sync >= SYNC_TIME) { 
 		        // world.log("I am processor %d and I'm gonna sync", pid);
+                world.log("%d, %d, %d, %d, %d", d, N, p, pid, work_stack.size());
                 //First we share how much work we have 
                 send_work_stack_lengths(world, p, pid, work_stack.size(), send_work_stack_length);
                 // if (pid == p - 1){
@@ -356,7 +357,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 if (done) {
-                    world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
+                    // world.log("I am processor %d, I think we are done and I have found count %d", pid, count);
                     auto remote_counts = bulk::queue<long long int>(world);
                     remote_counts(0).send(count);
                     world.sync();
@@ -369,10 +370,10 @@ int main(int argc, char* argv[]) {
                         // The adding of 2d corresponds to all paths which are | shaped
                         // The multiplying by 4d corresponds to mirroring (*2) and laying the starting segment in any axis (*d) in any direction (*2)
                         if (N != 0) {
-                            world.log("The total count is now %d", total * 4 * d + 2 * d);
+                            // world.log("The total count is now %d", total * 4 * d + 2 * d);
                         }
                         else {
-                            world.log("There is only 1 path  of length 0, you shouldn't need a computer for this. ");
+                            // world.log("There is only 1 path  of length 0, you shouldn't need a computer for this. ");
                         }
                     }
                     world.sync();
@@ -405,7 +406,7 @@ int main(int argc, char* argv[]) {
 
     const auto end = chrono::steady_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
-    cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
+    // cout << "It took " << duration << " ms and " << flops[0] << " flops on processor 0" << endl;
 
     // data to collect:
     // - runtime
