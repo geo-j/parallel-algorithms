@@ -88,13 +88,16 @@ vector<work> starting_L (long long int N, int d, long long int pid, vector<long 
     
     long long int centre = pow(N + 2, d) ;
     long long int startpos = centre + N + 2; 
-    auto visited = vector<int>(2 * centre);
-    visited[centre] = 1;
+    vector<int> visited;
+    // auto visited= vector<int>(2 * centre);
+    // visited[centre] = 1;
+    visited.push_back(centre);
 
     flops[pid] += 5;
 
     for (int i = 1; i < N; i ++) {
-        visited[centre + i] = 1;
+        // visited[centre + i] = 1;
+        visited.push_back(centre + i);
         startpos ++; 
         work workload =  {startpos, vector<int>(visited), i + 1};
         starting_positions.push_back(work(workload));
@@ -125,17 +128,18 @@ void saw(int d, long long int N, long long int &count, long long int p, long lon
     work task = work_stack.at(work_stack.size() - 1);
     work_stack.pop_back();
     //First we check whether we have visited this node already 
-    if (!task.visited.at(task.v)) {
+    // if (!task.visited.at(task.v)) {
+    auto it = find(task.visited.begin(), task.visited.end(), task.v);
+    if (it == task.visited.end()) {
 	 // Then we check whether our path is of the needed length
          if (task.cur_path_length == N) {
             count ++;
         }
 	// If not, we will add all extensions of the path to our workstack
         else {
-            task.visited[task.v] = true;
-            // for (long int w = 0; w < n; w ++) {
-            //     if (A[task.v][w]) {
-            // for (auto w : A[task.v])
+            // task.visited[task.v] = true;
+            task.visited.push_back(task.v);
+
             for (auto w : neighbours(N, d, task.v, pid, flops))
                     // We should take care to send a copy of visited as it will be different the next time we call it. 
                     work_stack.push_back(work(w, vector<int>(task.visited), task.cur_path_length + 1));
@@ -304,7 +308,7 @@ int main(int argc, char* argv[]) {
             long long int time_since_last_sync = 0;
             long long int path_length_so_far = 0;
             vector<work> work_stack;
-            vector<int> visited(2 * v, false);
+            vector<int> visited;
             auto start_sync = chrono::steady_clock::now();
             auto begin = chrono::steady_clock::now();
 
@@ -315,6 +319,8 @@ int main(int argc, char* argv[]) {
             // if (pid == 0){
             //     work_stack.push_back(work(v, visited, path_length_so_far));
             // }
+
+        
         //distribute  the starting positions cyclically
             auto starting_positions = starting_L(N, d, pid, flops);
             // world.log("There are %d starting positions",starting_positions.size());
