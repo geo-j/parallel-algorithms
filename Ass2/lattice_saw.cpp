@@ -74,13 +74,20 @@ vector<work> starting_L (long long int N, int d, long long int pid, vector<long 
     We can assume all starting paths are of an L-shape: first we go in one direction i times, then we take one step in another direction. 
     Output: all starting work of such paths. 
 
-    This symmetry should be counted 2*d amount of times. 
+    How often should we count such an L-shaped path?
+     well we can go in 2d directions for the first step
+     and the direction of the "short bit of the L" can go in d-1 directions, and then both in the positive and negative direction 
+     so totally, we should count these 4d(d-1) times.    
+    
     There is also a path which is not L-shaped, but | -shaped, a straight line. This also happens 2d times, 
     Together the |-shape of size N and all the L-shaped give all starting paths modulo symmetry. 
 
-    Thus we can distribute all the L-shaped starting paths cyclically, 
-    initialize the count of one processor to 1 instead of 0 
-    and multiply the end result by 2*d to get the total number of paths. 
+    
+    We can distribute the L-shaped starting paths cyclically,
+    multiply this end result by 4d(d-1) and add 2d. 
+
+    add 2d tot the count to account for the | -shaped path
+
       
     
     */
@@ -406,7 +413,8 @@ int main(int argc, char* argv[]) {
                             // The adding of 2d corresponds to all paths which are | shaped
                             // The multiplying by 4d corresponds to mirroring (*2) and laying the starting segment in any axis (*d) in any direction (*2)
                             if (N != 0) {
-                                n_paths = total * 4 * d + 2 * d;
+                                // n_paths = total * 2 * d * d + 2 * d;
+                                n_paths = total * 4 * d * (d - 1) + 2 * d;
                                 // world.log("The total count is now %d", total * 4 * d + 2 * d);
                             }
                             else {
@@ -458,7 +466,7 @@ int main(int argc, char* argv[]) {
     // - # ops
     // remember: write to output pipe to file
 
-    f_out.open("runtime.csv", ios_base::app);
+    f_out.open("runtime.csv", ios_base::out);
     for (long long int i = 0; i < p; i ++) {
         f_out << d << ',' << N << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << syncs.at(i) << ',' << n_paths << endl;
         // long long int j = 0;
