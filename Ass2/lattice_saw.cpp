@@ -297,9 +297,7 @@ int main(int argc, char* argv[]) {
 
     vector<long long int> flops(p), syncs(p);
 
-    cin >> d;
-
-    cin >> N;
+    cin >> d >> N;
     v = pow(N + 2, d);
 	// cout << "N = " << N <<", d = " << d << ", v = " << v << ", p = " << p << endl; 
 
@@ -310,8 +308,7 @@ int main(int argc, char* argv[]) {
             // init local processors
             auto pid = world.rank(); // local processor ID
             long long int flop       = 0;
-            long long int count      = 0;
-            long long int SYNC_TIME  = 0;
+            long long int count      = 0;            
             long long int time_since_last_sync = 0;
             long long int path_length_so_far = 0;
             vector<work> work_stack;
@@ -319,6 +316,16 @@ int main(int argc, char* argv[]) {
             auto start_sync = chrono::steady_clock::now();
             auto begin = chrono::steady_clock::now();
 
+            //In order to start with a better load balance, we'll first run the algorithm on the starting processors, then distribute it along the rest, having done already some work, so we don't do small sync step
+            long long int SYNC_TIME;
+            // if (N > p) {
+            //     SYNC_TIME = 1;
+            // }
+            // else {
+            //     SYNC_TIME = (d * p) / N;
+            //     world.log("%d", SYNC_TIME);
+            // }
+            SYNC_TIME = 2 ;
 
 
 
@@ -351,12 +358,7 @@ int main(int argc, char* argv[]) {
             int done = false;
             while (!done) {
     //	    world.log("I am processor %d and I'm about to do some work", pid);//Mark
-                if (work_stack.empty()) {
-                    // world.sync();
-                    done = true;
-    //		world.log("I am processor %d and apparantly I didn't have any work", pid); //Mark
-                } 
-                else {
+                if (!work_stack.empty()) {
                     // world.log("processor %d does work starting node = %d, count = %d, path length = %d", pid, work.w, count, work.N);
                     saw(d, N, count, p, pid, work_stack, flops);
                     // world.log("I am processor %d and did some work, my workstack now has size %d", pid, work_stack.size()); //Mark
@@ -415,6 +417,7 @@ int main(int argc, char* argv[]) {
                             if (N != 0) {
                                 // n_paths = total * 2 * d * d + 2 * d;
                                 n_paths = total * 4 * d * (d - 1) + 2 * d;
+                                flops[pid] += 6;
                                 // world.log("The total count is now %d", total * 4 * d + 2 * d);
                             }
                             else {
@@ -466,7 +469,7 @@ int main(int argc, char* argv[]) {
     // - # ops
     // remember: write to output pipe to file
 
-    f_out.open("runtime.csv", ios_base::out);
+    f_out.open("runtime.csv", ios_base::app);
     for (long long int i = 0; i < p; i ++) {
         f_out << d << ',' << N << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << syncs.at(i) << ',' << n_paths << endl;
         // long long int j = 0;
