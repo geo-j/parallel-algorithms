@@ -318,14 +318,14 @@ int main(int argc, char* argv[]) {
 
             //In order to start with a better load balance, we'll first run the algorithm on the starting processors, then distribute it along the rest, having done already some work, so we don't do small sync step
             long long int SYNC_TIME;
-            // if (N > p) {
-            //     SYNC_TIME = 1;
-            // }
-            // else {
-            //     SYNC_TIME = (d * p) / N;
-            //     world.log("%d", SYNC_TIME);
-            // }
-            SYNC_TIME = 2 ;
+            if (N <= p) {
+                SYNC_TIME = (2 * d * N) / p;
+            }
+            else {
+                SYNC_TIME = 2 * d;
+                // world.log("%d", SYNC_TIME);
+            }
+            // SYNC_TIME = 2 ;
 
 
 
