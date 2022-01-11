@@ -35,6 +35,9 @@ struct work {
 // DONE: use an adjacency list instead of a matrix
 // DONE: only pass the workstack to saw
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
+// TODO: Implement it for the Rubik's Snake
+// TODO: on Rob's advice: make visited int list instead of bool array. 
+// TODO: overdecomposition
 
 vector<long long int> neighbours(long long int N, int d, long long int v, long long int pid, vector<long long int> &flops){
     /* Input:
