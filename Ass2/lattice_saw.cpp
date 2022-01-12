@@ -321,13 +321,13 @@ int main(int argc, char* argv[]) {
             //If some processors have no workload, we want to do some work in advance, otherwise we might share too often. 
             long long int SYNC_TIME;
             if (N <= p) {
-                SYNC_TIME = (2 * d * N)/p;
+                SYNC_TIME = (2 * d * N) / p;
             }
             else {
-                SYNC_TIME = 2 * d ;
-                world.log("%d", SYNC_TIME);
+                SYNC_TIME = 2 * d;
+                // world.log("%d", SYNC_TIME);
             }
-            // SYNC_TIME = 2*d ;
+            // SYNC_TIME = 2 ;
 
 
 
