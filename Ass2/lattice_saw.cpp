@@ -175,7 +175,7 @@ void saw(   int d,                                  // Number of dimensions
             }
         }           
     }
-    flops[pid] += 3;
+    flops[pid] += 4;
 }
 
 void send_work_stack_lengths(long long int p, long long int pid, int work_stack_length, bulk::queue<long long int, long long int> &send_work_stack_length, vector<long long int> &flops) {
