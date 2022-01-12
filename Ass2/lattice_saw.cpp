@@ -303,7 +303,7 @@ map<long long int, long long int> redistribute_work(vector <long long int> work_
 
 int main(int argc, char* argv[]) {
 	//Starting the bulk system and taking user input
-    bulk::thread::environment env;
+    bulk::mpi::environment env;
     long long int N, v, p = env.available_processors(), n_paths = 2; // get available processors
     ofstream f_out;
     vector<vector<int>> A;
