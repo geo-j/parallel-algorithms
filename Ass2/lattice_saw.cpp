@@ -498,7 +498,7 @@ int main(int argc, char* argv[]) {
 
     f_out.open("runtime.csv", ios_base::app);
     for (long long int i = 0; i < p; i ++) {
-        f_out << d << ',' << N << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << syncs.at(i) << ',' << n_paths << endl;
+        f_out << d << ',' << N << ',' << p  << ',' << duration << ',' << i << ',' << flops.at(i) << ',' << syncs.at(i) << ',' << n_paths << ',' << sync_factor << endl;
         // long long int j = 0;
         // for (auto load : loads.at(i)) {
         //     j ++;
