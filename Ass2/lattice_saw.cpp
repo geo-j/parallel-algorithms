@@ -36,8 +36,8 @@ struct work {
 // DONE: only pass the workstack to saw
 // DONE? make redistribute work cyclically but not by going trough everything (do clever divisions)
 // TODO: Implement it for the Rubik's Snake
-// TODO: on Rob's advice: make visited int list instead of bool array. 
-// TODO: overdecomposition
+// DONE: on Rob's advice: make visited int list instead of bool array. 
+// TODO: overdecomposition if we have a Snake
 
 vector<long long int> neighbours(long long int N, int d, long long int v, long long int pid, vector<long long int> &flops){
     /* Input:
@@ -317,15 +317,17 @@ int main(int argc, char* argv[]) {
             auto begin = chrono::steady_clock::now();
 
             //In order to start with a better load balance, we'll first run the algorithm on the starting processors, then distribute it along the rest, having done already some work, so we don't do small sync step
+            //We could start with a sync time of 2*d * #work/processors, as 2d is roughly the amount of neighbours
+            //If some processors have no workload, we want to do some work in advance, otherwise we might share too often. 
             long long int SYNC_TIME;
-            // if (N > p) {
-            //     SYNC_TIME = 1;
-            // }
-            // else {
-            //     SYNC_TIME = (d * p) / N;
-            //     world.log("%d", SYNC_TIME);
-            // }
-            SYNC_TIME = 2 ;
+            if (N <= p) {
+                SYNC_TIME = (2 * d * N)/p;
+            }
+            else {
+                SYNC_TIME = 2 * d ;
+                world.log("%d", SYNC_TIME);
+            }
+            // SYNC_TIME = 2*d ;
 
 
 
