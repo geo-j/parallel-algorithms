@@ -4,7 +4,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 # df = pd.read_csv('loads_4.csv', names = ['index', 't', 'd', 'N', 'p', 'pid', 'load', 'duration'])
-df = pd.read_csv('runtime.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths'])
+df = pd.read_csv('runtime.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths', 'sync_factor'])
 df = df.dropna(axis = 0)
 df = df.astype(int)
 print(df)
@@ -60,14 +60,27 @@ def runtime():
     global df
     df = df[df['d'] == 2]
     df = df[df['pid'] == 0]
-    print(df['N'])
-    for p in [1, 2, 4, 8, 16, 32, 64]:
+    df = df[df['n_paths'] != 2]
+    df = df.drop_duplicates()
+    # print(df.groupby('p')['N'])
+    # df = df[df['sync'] == 0]
+
+    # print(df)
+    for p in list(map(int, df['p'].unique())):
+    # for p in [1]:
     # print(df['duration'])
         # print(df[df['p'] == p]['N'], df[df['p'] == p]['duration'])
-        plt.plot(df[df['p'] == p]['N'], df[df['p'] == p]['duration'])
+        df_p = df[df['p'] == p]
+        df_p['avg_duration'] = df_p.groupby('N')['duration'].transform('mean')
+        df_p = df_p[['N', 'avg_duration']]
+        df_p = df_p.drop_duplicates()
+        # N = list(map(int, df_p['N'].unique()))
+        print(df_p)
+        # plt.plot(df[df['p'] == p]['N'], df[df['p'] == p]['avg_duration'])
+        plt.plot(df_p['N'], df_p['avg_duration'])
     plt.xlabel('path length $n$')
     plt.ylabel('duration (ms)')
-    plt.legend(['$p = 1$', '$p = 2$', '$p = 4$', '$p = 8$', '$p = 16$', '$ p = 32$', '$p = 64$'])
+    plt.legend(['$p = 1$', '$p = 2$', '$p = 4$', '$p = 8$', '$p = 16$', '$ p = 32$', '$p = 64$', '$p = 128$'])
     plt.grid()
     plt.title('Runtime ')
     plt.show()
