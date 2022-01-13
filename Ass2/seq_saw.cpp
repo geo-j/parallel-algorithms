@@ -30,6 +30,7 @@ vector<long long int> neighbours(long long int N, int d, long long int v){
         Then in a diamond of size N around this centre, 
         the neigbhours should match up, and all have positive values. 
     */
+	cout<< "neighbours called on " << N<< ", "  << d <<"," << v; 
     vector<long long int> neighbors;
 
     for (int i = 0 ; i < d; i ++){
@@ -40,7 +41,7 @@ vector<long long int> neighbours(long long int N, int d, long long int v){
 }
 
 void saw(long int n, long long int d,  long int N, long int v,  vector<vector<bool>> A, long int i, vector<bool> visited, vector<long int> walk, long int &count) {
-    // cout << i << ' ' << v + 1 << endl;
+    cout << i << ' ' << v + 1 << endl;
     if (!visited.at(v)) {
          if (i == N) {
             for (long int j = 0; j < walk.size(); j ++) {
@@ -72,20 +73,21 @@ int main() {
     long int n, d, N, v, count = 0;
     vector<long int> walk;
     vector<vector<bool>> A;
-
-    cin >> n;
-    ifstream f("input_" + to_string(n));
-    for (long int i = 0; i < n; i ++) {
-        vector<bool> row(n);
-        A.push_back(row);
-        for (long int j = 0; j < n; j ++) {
-            bool edge;
-            f >> edge;
-            A[i][j] = edge;
-        }
-    }
+//    cin >> n;
+//    ifstream f("input_" + to_string(n));
+//    for (long int i = 0; i < n; i ++) {
+//        vector<bool> row(n);
+//        A.push_back(row);
+//        for (long int j = 0; j < n; j ++) {
+//            bool edge;
+//            f >> edge;
+//            A[i][j] = edge;
+//        }
+//    }
     cin >> N >> d;
-    vector<bool> visited(n, false);
+	v = pow(N+2,d); 
+	n = 2*v ; 
+    vector<bool> visited(n , false);
     walk.push_back(v);
     saw(n, d, N, v, A, 0, visited, walk, count);
     cout << count << endl;
