@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <chrono>
 
 using namespace std;
 
@@ -30,7 +31,7 @@ vector<long long int> neighbours(long long int N, int d, long long int v){
         Then in a diamond of size N around this centre, 
         the neigbhours should match up, and all have positive values. 
     */
-	cout<< "neighbours called on " << N<< ", "  << d <<"," << v; 
+	// cout<< "neighbours called on " << N<< ", "  << d <<"," << v; 
     vector<long long int> neighbors;
 
     for (int i = 0 ; i < d; i ++){
@@ -40,21 +41,21 @@ vector<long long int> neighbours(long long int N, int d, long long int v){
     return neighbors;
 }
 
-void saw(long int n, long long int d,  long int N, long int v,  vector<vector<bool>> A, long int i, vector<bool> visited, vector<long int> walk, long int &count) {
-    cout << i << ' ' << v + 1 << endl;
+void saw(long int n, long long int d,  long int N, long int v,  vector<vector<bool>> A, long int i, vector<bool> visited, vector<long int> walk, long int &count, long int &flops) {
+    // cout << i << ' ' << v + 1 << endl;
     if (!visited.at(v)) {
          if (i == N) {
-            for (long int j = 0; j < walk.size(); j ++) {
-                cout << walk.at(j) + 1 << ", ";
-            }
+            // for (long int j = 0; j < walk.size(); j ++) {
+                // cout << walk.at(j) + 1 << ", ";
+            // }
             count ++;
-            cout << endl;
+            // cout << endl;
         }
         else {
             visited[v] = true;
 			for (auto w : neighbours (N, d, v)) {
 				walk.push_back(w);
-				saw(n, d, N, w, A, i + 1, visited, walk, count);
+				saw(n, d, N, w, A, i + 1, visited, walk, count, flops);
                 walk.pop_back();
 			}
 //            for (long int w = 0; w < n; w ++) {
@@ -70,9 +71,10 @@ void saw(long int n, long long int d,  long int N, long int v,  vector<vector<bo
 }
 
 int main() {
-    long int n, d, N, v, count = 0;
+    long int n, d, N, v, count = 0, flops = 0;
     vector<long int> walk;
     vector<vector<bool>> A;
+    ofstream f_out;
 //    cin >> n;
 //    ifstream f("input_" + to_string(n));
 //    for (long int i = 0; i < n; i ++) {
@@ -87,9 +89,22 @@ int main() {
     cin >> N >> d;
 	v = pow(N+2,d); 
 	n = 2*v ; 
+    const auto start = chrono::steady_clock::now();
     vector<bool> visited(n , false);
     walk.push_back(v);
-    saw(n, d, N, v, A, 0, visited, walk, count);
-    cout << count << endl;
+    saw(n, d, N, v, A, 0, visited, walk, count, flops);
+    const auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+    // cout << count << endl;
+    f_out.open("runtime.csv", ios_base::app);
+    // for (long long int i = 0; i < p; i ++) {
+    f_out << d << ',' << N << ',' << 0  << ',' << duration << ',' << 0 << ',' << flops << ',' << 0 << ',' << count << ',' << 0 << endl;
+        // long long int j = 0;
+        // for (auto load : loads.at(i)) {
+        //     j ++;
+        //     f_out << j << ',' << i << ',' << load << endl;
+        // }
+    // }
+    f_out.close();
     return 0;
 }
