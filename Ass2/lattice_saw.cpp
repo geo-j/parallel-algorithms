@@ -28,7 +28,7 @@ using namespace std;
 // };
 
 // OPTIMISATIONS:
-// TODO: make visited an integer instead of a  bool array
+// NOTWORTHIT: make visited an integer instead of a  bool array -- already changed it to PATH
 // NOTWORTHIT: Make worstack a stack instead of a vector?
 // TODO: Make a neighbours function which can use a graph from suitesparse/ 
 // DONE: generate a square lattice by calculations so we save memory)
@@ -114,41 +114,30 @@ vector< vector <int> > starting_L (long long int N, int d, long long int pid, ve
     return vector<vector<int>>(starting_positions);
 }
 
-void saw(   int d,                                  // Number of dimensions 
+void saw(   int d,                                  // Number of dimensions  
             long long int N,                        // length of the walk we're looking for
             long long int &count,                   // Count this processsor has found so far
             long long int p,                        // Number of processors
             long long int pid,                      // Processor id of current processor
             vector< vector<int> > &work_stack,      // The stack of paths this processor is responsible for
-            vector<long long int> &flops
+            vector<long long int> &flops            // flop counter
         ) {
 /* given a path adds all of its one-step extensions to the workstack
  *
- * Input: the world, the time since last sync
- *        the int n, representing the size of graph
- *        the int N, representing the length of the paths we are interested in
- *        the int v, representing the node we are at
- *        the int i, representing the current path length // change to cur_path_length
- *        the matrix A, which is the adjecency matrix of our graph
- *        the vector of all nodes we have visited so far vector<int> visited,  
- *        long int &count, how many walks has this processor counted. , 
- *        long int p, 
- *        long int pid
- *
  * Effects:
- *    first checks whether the given path is still self-avoiding. 
+ * 	takes the first path on the work stack.
+ *      first checks whether the given path is still self-avoiding. 
  *        if the path length is the needed one we increment the count
- *        otherwise, we add all neighbours of v to the workstack as if we were travelling there. 
+ *        otherwise, we add all neighbours of v to the workstack as if we were travelling there, 
  */
 
     //Take the top of the work stack 
     vector<int> path = work_stack.at(work_stack.size() - 1);
     work_stack.pop_back();
  
-    //First we check whether we have visited the last  node already 
-    // if (!task.visited.at(task.v)) {
-
-    auto it = find(path.begin(), --path.end(), path.at(path.size() - 1));
+    //check whether we still have a self-avoiding walk, by checking that the latest entry hasn't been visited earlier. 
+    int head = path.at(path.size()-1); 
+    auto it = find(path.begin(), --path.end(), head);
     if (next(it) == path.end()) {
         // Then we check whether our path is of the needed length
         if (path.size() - 1 == N) {
@@ -156,34 +145,38 @@ void saw(   int d,                                  // Number of dimensions
         }
     // If not, we will add all extensions of the path to our workstack
         else {
-            // task.visited[task.v] = true;
-            // path.push_back(task.v);
-
-            for (auto w : neighbours(N, d, path.at(path.size() - 1), pid, flops)) {
-                    // We should take care to send a copy of visited as it will be different the next time we call it. 
-                    // work_stack.push_back(work(w, vector<int>(task.visited), task.cur_path_length + 1));
+	//So we look at all neighbours
+            for (auto w : neighbours(N, d, head , pid, flops)) {
+                    // We should take care to send a copy of our path, as not to change the path. 
                     auto neighbour_path = vector<int>(path);
                     //Check here wether w is new. 
-                    auto it = find(path.begin(), path.end(), w);
+                    //auto it = find(path.begin(), path.end(), w);
                     // if (it == path.end()) {
                     //     neighbour_path.push_back(w);
                     //     work_stack.push_back(vector<int>(neighbour_path));
                     // }
                     neighbour_path.push_back(w); 
                     work_stack.push_back(vector<int>(neighbour_path));
-                // }
             }
         }           
     }
-    flops[pid] += 3;
+//    flops[pid] += 3;
 }
 
-void send_work_stack_lengths(long long int p, long long int pid, int work_stack_length, bulk::queue<long long int, long long int> &send_work_stack_length, vector<long long int> &flops) {
+
+
+void send_work_stack_lengths(
+	long long int p,                 // amount of processors
+	long long int pid, 		 // id of local processors
+	int work_stack_length,		 // the size of the local work stack on this processor 
+	bulk::queue<long long int, long long int> &send_work_stack_length, // The size of work stacks of other processors
+	vector<long long int> &flops	 // flop counter
+	) {
 /* shares the lengths of the work stacks to all other processors
  */	
     for (long long int i = 0; i < p; i ++) {
         send_work_stack_length(i).send(pid, work_stack_length);
-        flops[pid] ++;
+//        flops[pid] ++;
     }
 }
 
