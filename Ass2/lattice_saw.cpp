@@ -402,7 +402,7 @@ int main(int argc, char* argv[]) {
                     start_sync = chrono::steady_clock::now();
                     auto current_time = chrono::duration_cast<chrono::milliseconds>(end_sync - begin).count();
                     // world.log("I am processor %d and I'm gonna sync", pid);
-                    world.log("%lld, %d, %d, %d, %d, %d, %d, %d", current_time, d, N, p, pid, work_stack.size(), duration, syncs[pid]);
+                    world.log("%lld, %d, %d, %d, %d, %d, %d, %d, %d", current_time, d, N, p, pid, work_stack.size(), duration, syncs[pid], sync_factor);
                     //First we share how much work we have 
                     send_work_stack_lengths(p, pid, work_stack.size(), send_work_stack_length, flops);
                     // if (pid == p - 1){
