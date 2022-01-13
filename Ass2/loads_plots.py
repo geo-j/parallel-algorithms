@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-# df = pd.read_csv('loads_4.csv', names = ['index', 't', 'd', 'N', 'p', 'pid', 'load', 'duration'])
-df = pd.read_csv('runtime.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths', 'sync_factor'])
+df = pd.read_csv('loads.csv', names = ['t', 'd', 'N', 'p', 'pid', 'load', 'duration', 'n_syncs'])
+# df = pd.read_csv('runtime.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths', 'sync_factor'])
+# print(df['t'])
+df['t'] = df['t'].str[13:]
 df = df.dropna(axis = 0)
 df = df.astype(int)
 print(df)
@@ -34,15 +36,19 @@ def all_loads():
     plt.show()
 
 def min_max_load():
+    global df
     _, ax = plt.subplots()
+    df = df[df['d'] == 2]
+    df = df[df['N'] == 13]
 
     # print(len(load0), len(load1), len(load2), len(load3))
     matrix = []
-    for p in range(4):
+    for p in range(8):
         # print(p, df[df['pid'] == str(p)])
-        load = df[df['pid'] == p]['load']
+        load = df[df['pid'] == p]['load'].tolist()
         matrix.append(load)
 
+    # print(matrix)
     matrix = np.array(matrix)
     # print(matrix.min(axis = 0))
     ax.bar(range(len(matrix[0])), matrix.min(axis = 0))
@@ -51,9 +57,9 @@ def min_max_load():
 
     plt.legend(['min load', 'max load'])
     plt.grid()
-    plt.xlabel('time steps')
+    plt.xlabel('# syncs')
     plt.ylabel('load')
-    plt.title('Load Distribution In Time for $d = 2$, $N = 10$, $p = 4$')
+    plt.title('Load Distribution In Time for $d = 2$, $N = 13$, $p = 8$')
     plt.show()
 
 def runtime():
@@ -85,4 +91,5 @@ def runtime():
     plt.title('Runtime ')
     plt.show()
 
-runtime()
+# runtime()
+min_max_load()
