@@ -46,17 +46,21 @@ int main() {
     vector<vector<bool>> A;
 
     cin >> n;
-    ifstream f("input_" + to_string(n));
+    cout << n << endl;
+    // ifstream f("input_" + to_string(n));
     for (long int i = 0; i < n; i ++) {
         vector<bool> row(n);
         A.push_back(row);
         for (long int j = 0; j < n; j ++) {
             bool edge;
-            f >> edge;
+            cin >> edge;
+            cout << edge << ' ';
             A[i][j] = edge;
         }
     }
     cin >> N >> v;
+    // v = (N + 2) * (N + 2) + N + 2;
+    cout << N << ' ' << v << endl;
     vector<bool> visited(n, false);
     walk.push_back(v);
 
