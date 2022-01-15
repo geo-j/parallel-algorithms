@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-# df = pd.read_csv('loads2.csv', names = ['t', 'd', 'N', 'p', 'pid', 'load', 'duration', 'n_syncs', 'sync_factor'])
-df = pd.read_csv('runtime_syncs.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths', 'sync_factor'])
+df = pd.read_csv('loads.csv', names = ['t', 'd', 'N', 'p', 'pid', 'load', 'duration', 'n_syncs', 'sync_factor'])
+# df = pd.read_csv('runtime_syncs.csv', names = ['d', 'N', 'p', 'duration', 'pid', 'flops', 'syncs', 'n_paths', 'sync_factor'])
 # print(df['t'])
-# df['t'] = df['t'].str[13:]
+df['t'] = df['t'].str[13:]
 df = df.dropna(axis = 0)
 df = df.astype(int)
 print(df)
@@ -18,7 +18,7 @@ def all_loads():
     global df
     _, ax = plt.subplots()
     df = df[df['n_syncs'] <= 50]
-    df = df[df['sync_factor'] == 10]
+    df = df[df['sync_factor'] == 1]
     df = df[df['N'] == 15]
     df = df[df['d'] == 2]
     df = df[df['p'] == 8]
@@ -40,7 +40,7 @@ def all_loads():
     plt.xlabel('# syncs')
     plt.ylabel('load')
     plt.ylim(0, 250)
-    plt.title('Good Load Distribution In Time for the First 50 Syncs for $d = 2$, $N = 15$, $p = 8$')
+    plt.title('Bad Load Distribution In Time for the First 50 Syncs for $d = 2$, $N = 15$, $p = 8$')
     plt.show()
 
 def min_max_load():
@@ -99,7 +99,7 @@ def loads_zero_sync():
         df_p = df[df['sync_factor'] == s]
         zeros = df_p[df_p['load'] == 0]['N'].count()
         # avg_duration = df_p['duration'].mean()
-        print(s, zeros)
+        # print(s, zeros)
         n_syncs.append(zeros)
     plt.plot(n_syncs)
         # durations.append(avg_duration)
@@ -107,6 +107,8 @@ def loads_zero_sync():
     plt.xlabel('sync factor')
     plt.ylabel('# loads 0')
     # plt.legend(['$p = 1$', '$p = 2$', '$p = 4$', '$p = 8$', '$p = 16$', '$ p = 32$', '$p = 64$', '$p = 128$', '$p = 256$'])
+    print(sorted(list(map(int, df['sync_factor'].unique()))))
+    plt.xticks(range(len(n_syncs)), sorted(list(map(int, df['sync_factor'].unique()))))
     plt.grid()
     plt.title('Number of 0 Loads at Sync Time for $p = 8$, $N = 15$')
     plt.show()
@@ -118,8 +120,8 @@ def runtime():
     df = df[df['n_paths'] != 2]
     # df = df[df['p'] != 0]
     # df = df[df['sync_factor'] == 10]
-    df = df[df['N'] >= 14]
-    df = df[df['N'] <= 19]
+    df = df[df['N'] >= 20]
+    df = df[df['N'] <= 23]
 
     df = df.drop_duplicates()
     # print(df.groupby('p')['N'])
@@ -141,17 +143,18 @@ def runtime():
         # N = list(map(int, df_p['N'].unique()))
         # print(df_p)
         # plt.plot(df[df['p'] == p]['N'], df[df['p'] == p]['avg_duration'])
-        # plt.semilogy(df_p['N'], df_p['avg_duration'], base = 2)
-        df_p.to_csv('runtime_p.csv', mode = 'a', index = False, header = False)
+        plt.semilogy(df_p['N'], df_p['avg_duration'], base = 2)
+        # df_p.to_csv('runtime_p.csv', mode = 'a', index = False, header = False)
         # plt.plot(df_p['N'], df_p['avg_duration'])
     # print(list(map(int, np.logspace(5, 18, 15, base = 2, dtype = int))))
     # plt.yticks(np.logspace(5, 18, 12, base = 2, dtype = int))
-    plt.ylim(2 ** 5, 2 ** 21)
+    # plt.ylim(2 ** 5, 2 ** 21)
     plt.xlabel('path length $N$')
     plt.ylabel('duration (ms)')
-    plt.legend(['seq', '$p = 1$', '$p = 2$', '$p = 4$', '$p = 8$', '$p = 16$', '$ p = 32$', '$p = 64$', '$p = 128$', '$p = 256$'])
+    # plt.legend(['seq', '$p = 1$', '$p = 2$', '$p = 4$', '$p = 8$', '$p = 16$', '$ p = 32$', '$p = 64$', '$p = 128$', '$p = 256$'])
+    plt.legend(['$p = 64$', '$p = 128$', '$p = 256$'])
     plt.grid()
-    plt.title('Runtime Plot for a Sync Factor of 10')
+    plt.title('Runtime Plot for a Sync Factor of $p$')
     plt.show()
 
 def speed_runtime():
@@ -201,6 +204,6 @@ def speed_runtime():
     plt.show()
 # speed_runtime()
 # min_max_load()
-runtime()
-# loads_zero_sync()
+# runtime()
+loads_zero_sync()
 # all_loads()
